@@ -7,11 +7,15 @@ public class CellphoneDataModel {
     private int battery;
     private int temperature;
     private int wifi_status;
+    private int signalStrength;
+    private String network_type;
 
-    public CellphoneDataModel(int battery, int temperature, int wifi_status) {
+    public CellphoneDataModel(int battery, int temperature, int wifi_status, int signalStrength, String network_type) {
         this.battery = battery;
         this.temperature = temperature;
         this.wifi_status = wifi_status;
+        this.signalStrength = signalStrength;
+        this.network_type = network_type;
     }
 
     public JSONObject toJSON() {
@@ -21,11 +25,29 @@ public class CellphoneDataModel {
             json.put("battery", battery);
             json.put("temperature", temperature);
             json.put("wifi_status", wifi_status);
+            json.put("signal", signalStrength);
+            json.put("network", network_type);
             return json;
         } catch (JSONException e){
             e.printStackTrace();
             return null;
         }
+    }
+
+    public int getSignalStrength() {
+        return signalStrength;
+    }
+
+    public void setSignalStrength(int signalStrength) {
+        this.signalStrength = signalStrength;
+    }
+
+    public String getNetwork_type() {
+        return network_type;
+    }
+
+    public void setNetwork_type(String network_type) {
+        this.network_type = network_type;
     }
 
     public int getBattery() {

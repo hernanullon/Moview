@@ -38,6 +38,11 @@ import org.json.JSONObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Iterator;
 
 
@@ -55,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private ExternalDataModel ClimaticModel;
 
 
-    private JSONDatabaseHelper3 buffer;
+    private JSONDatabaseHelper buffer;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private boolean updAcc = false, updGyr = false, updMag = false;
 
@@ -66,10 +71,27 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private MqttService mqttService;
     private boolean bound = false;
 
+    public static final Location CHECKPOINT_LOCATION = new Location("");
+    public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
+    ZonedDateTime time_now = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        double latitude_final = -22.816113211714086, longitude_final = -47.07272459491293;
+        CHECKPOINT_LOCATION.setLatitude(latitude_final);
+        CHECKPOINT_LOCATION.setLongitude(longitude_final);
+
+        Log.d("TAG", "FINAL_CHECKPOINT: "+ CHECKPOINT_LOCATION.toString());
+        Log.d("TAG", "FINAL_TIME_WORK: "+FINAL_TIME_WORK.toString());
+        Log.d("TAG", "time_now: " + time_now.toString());
+        long unixTimestampMillis = time_now.toInstant().toEpochMilli();
+        Log.d("TAG", "time_now UNIX: " + Long.toString(unixTimestampMillis));
+
+
         btnStart = this.findViewById(R.id.btn_start);
 
         sensorDataModel = new SensorDataModel();
@@ -78,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         locationModel = new LocationModel();
         locationView = new LocationView(this);
 
-        cellphoneDataModel = new CellphoneDataModel(-999,-999,-999);
+        cellphoneDataModel = new CellphoneDataModel(-999,-999,-999, -999,"-999");
         cellphoneDataView = new CellphoneDataView(this);
 
         CANModel = new ExternalDataModel(null);
@@ -91,12 +113,12 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         registerReceiver(inertialReceiver, filter);
         filter.addAction("com.unicamp.moview_v1.SEND_CELLPHONE_SENSORS");
         registerReceiver(cellphoneReceiver, filter);
-        //filter.addAction("com.unicamp.moview_v1.SEND_EXTERNAL_SENSORS");
-        //registerReceiver(externalReceiver, filter);
+        filter.addAction("com.unicamp.moview_v1.SEND_EXTERNAL_SENSORS");
+        registerReceiver(externalReceiver, filter);
 
         requestWriteSettingsPermission();
 
-        buffer = new JSONDatabaseHelper3(this);
+        buffer = new JSONDatabaseHelper(this);
         bindService(new Intent(this, MqttService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
         if (isHotspotEnabled) {
@@ -200,7 +222,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private void addJSON(JSONObject j2, JSONObject j1){
         if(j1 != null) {
             Iterator<String> keys = j1.keys();
-            while (keys.hasNext()) {
+            while (keys.hasNext()){
                 String key = keys.next();
                 try {
                     j2.put(key, j1.get(key));
@@ -214,22 +236,22 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private JSONObject concatJSON() {
         try {
             JSONObject result = new JSONObject();
+            Log.d("TAG", "Creating JSON..." + result);
             JSONObject json1 = locationModel.toJSON();
             JSONObject json2 = sensorDataModel.toJSON();
             JSONObject json3 = cellphoneDataModel.toJSON();
-            //JSONObject json4 = CANModel.toJSON();
-            //Log.d("TAG", "Add JSON..." + CANModel.getMessage());
+            JSONObject json4 = CANModel.toJSON();
             addJSON(result,  json1);
             addJSON(result,  json2);
             addJSON(result,  json3);
-            //addJSON(result,  json4);
-
+            addJSON(result,  json4);
             result.put("type", "realtime");
-            //Log.d("TAG", "Creating JSON..." + result);
+            result.put("device_id", "B2");
+            Log.d("TAG", "FINISH Creating JSON..." + result);
             return result;
         } catch (JSONException e) {
             e.printStackTrace();
-            Log.d("TAG", "Creating JSON..." + e);
+            Log.d("TAG", "FAIL Creating JSON..." + e);
         }
         return null;
     }
@@ -295,7 +317,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             locationModel.setSpeed(location.getSpeed());
             locationModel.setAltitude(location.getAltitude());
             JSONObject msg_gps = locationModel.toJSON();
-            //locationView.update(msg_gps);
+            locationView.update(msg_gps);
             buffer.insertJson(msg_gps.toString());
         }
     };
@@ -306,12 +328,16 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             //Log.d("TAG", "Cellphone Service ON");
             int battery = intent.getIntExtra("battery_cellphone", cellphoneDataModel.getBattery());
             int temperature = intent.getIntExtra("temperature_cellphone", cellphoneDataModel.getTemperature());
+            int signalLevel = intent.getIntExtra("signal_cellphone", cellphoneDataModel.getSignalStrength());
+            String networkType = intent.getStringExtra("network_cellphone");
             cellphoneDataModel.setBattery(battery);
             cellphoneDataModel.setTemperature(temperature);
+            cellphoneDataModel.setSignalStrength(signalLevel);
+            cellphoneDataModel.setNetwork_type(networkType);
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
-
             cellphoneDataView.update(msg_cellphone);
             buffer.insertJson(msg_cellphone.toString());
+            Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
         }
     };
 
@@ -350,7 +376,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             }
             if(updAcc && updGyr && updMag){
                 JSONObject msg_sensor = sensorDataModel.toJSON();
-                //sensorDataView.update(msg_sensor);
+                sensorDataView.update(msg_sensor);
                 buffer.insertJson(msg_sensor.toString());
                 updAcc = updGyr = updMag = false;
             }
@@ -370,6 +396,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             unbindService(serviceConnection);
             bound = false;
         }
+        buffer.closeExecutor();
     }
 
     @Override
@@ -384,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     @Override
     public JSONObject getCurrentDataMqtt() {
-        //Log.d("TAG", "MQTT Service ON");
+        Log.d("TAG", "MQTT Service ON");
         return concatJSON();
     }
 }

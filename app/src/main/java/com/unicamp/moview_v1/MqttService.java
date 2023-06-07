@@ -23,6 +23,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONObject;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -55,45 +57,36 @@ public class MqttService extends Service {
         serviceCallbacks = callbacks;
     }
 
-    public void connectServer(){
+    public void connectServer() {
         try {
             client = new MqttAsyncClient(SERVER_URI, CLIENT_ID, null);
             Executors.newSingleThreadExecutor().execute(() -> {
-                while (true) {
-                    Log.d("TAG", "-- Ciclo MQTT --");
-                    try {
-                        if (!client.isConnected()) {
-                            IMqttToken token = client.connect();
-                            token.waitForCompletion();
-                        }
-                        else{
-                            Log.d("TAG", "-- Conectado --");
-                            startSendingJson();
-                            break;
-                        }
-                    } catch (MqttException e) {
-                        Log.d("TAG", "No conectado 1... Intentando reconectar en 3 segundos");
+                Timer timer = new Timer();
+                timer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        Log.d("TAG", "-- Ciclo MQTT --");
                         try {
-                            Thread.sleep(3000);
-                        } catch (InterruptedException ex) {
-                            Log.d("TAG", "Interrumpido durante la espera para reconectar...");
+                            if (!client.isConnected()) {
+                                IMqttToken token = client.connect();
+                                token.waitForCompletion();
+                            } else {
+                                Log.d("TAG", "-- Conectado --");
+                                startSendingJson();
+                                timer.cancel(); // Detener el temporizador una vez que se haya establecido la conexión
+                            }
+                        } catch (MqttException e) {
+                            Log.d("TAG", "No conectado 1... Intentando reconectar en 2 segundos");
                         }
                     }
-                }
+                }, 0, 2000); // Intentar reconexión cada 2 segundos (ajusta el valor según tus necesidades)
             });
         } catch (MqttException e) {
             e.printStackTrace();
             Log.d("TAG", "No conectado 2...");
         }
-//        try {
-//            IMqttToken token = client.connect();
-//            token.waitForCompletion();
-//            Log.d("TAG", "Conectando...");
-//        } catch (MqttException e) {
-//            //e.printStackTrace();
-//            Log.d("TAG", "No conectado...");
-//        }
     }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
