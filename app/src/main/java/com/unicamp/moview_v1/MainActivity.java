@@ -44,6 +44,12 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Iterator;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity implements ServiceCallbacks {
@@ -65,32 +71,28 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private boolean updAcc = false, updGyr = false, updMag = false;
 
     private Button btnStart;
-    private TextView count_txt;
 
-    public boolean isHotspotEnabled = true;
+    public static boolean START_MONITORING = false;
     private MqttService mqttService;
     private boolean bound = false;
 
-    public static final Location CHECKPOINT_LOCATION = new Location("");
-    public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
-    ZonedDateTime time_now = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> schedulerOffline;
+
+    public static final float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
+    //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
+    public static final String DEVICE_ID = "B1";
+    //public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
+    public static final LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
+    public static final LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
+    public static boolean REAL_TIME_OPERATION = true;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        double latitude_final = -22.816113211714086, longitude_final = -47.07272459491293;
-        CHECKPOINT_LOCATION.setLatitude(latitude_final);
-        CHECKPOINT_LOCATION.setLongitude(longitude_final);
-
-        Log.d("TAG", "FINAL_CHECKPOINT: "+ CHECKPOINT_LOCATION.toString());
-        Log.d("TAG", "FINAL_TIME_WORK: "+FINAL_TIME_WORK.toString());
-        Log.d("TAG", "time_now: " + time_now.toString());
-        long unixTimestampMillis = time_now.toInstant().toEpochMilli();
-        Log.d("TAG", "time_now UNIX: " + Long.toString(unixTimestampMillis));
-
 
         btnStart = this.findViewById(R.id.btn_start);
 
@@ -100,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         locationModel = new LocationModel();
         locationView = new LocationView(this);
 
-        cellphoneDataModel = new CellphoneDataModel(-999,-999,-999, -999,"-999");
+        cellphoneDataModel = new CellphoneDataModel(-999,-999,-999, -999,"None");
         cellphoneDataView = new CellphoneDataView(this);
 
         CANModel = new ExternalDataModel(null);
@@ -121,12 +123,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         buffer = new JSONDatabaseHelper(this);
         bindService(new Intent(this, MqttService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
-        if (isHotspotEnabled) {
-            enableHotspot(true);
-            Log.d("TAG", "Hotspot ACTIVADO...");
-        } else {
-            enableHotspot(false);
-        }
+        enableHotspot(true);
+        Log.d("TAG", "Hotspot ACTIVADO...");
 
         Intent intent = new Intent();
         intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
@@ -143,8 +141,10 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                START_MONITORING = true;
                 StartMonitoring();
                 startServer();
+                SchedulerOfflineDetect();
             }
         });
     }
@@ -228,6 +228,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                     j2.put(key, j1.get(key));
                 } catch (JSONException e) {
                     e.printStackTrace();
+                    Log.d("TAG", "CRASH ADD JSON..." + j1.toString());
                 }
             }
         }
@@ -236,18 +237,23 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private JSONObject concatJSON() {
         try {
             JSONObject result = new JSONObject();
-            Log.d("TAG", "Creating JSON..." + result);
             JSONObject json1 = locationModel.toJSON();
-            JSONObject json2 = sensorDataModel.toJSON();
-            JSONObject json3 = cellphoneDataModel.toJSON();
-            JSONObject json4 = CANModel.toJSON();
             addJSON(result,  json1);
+
+            JSONObject json2 = sensorDataModel.toJSON();
             addJSON(result,  json2);
+
+            JSONObject json3 = cellphoneDataModel.toJSON();
             addJSON(result,  json3);
-            addJSON(result,  json4);
+
+            if(CANModel.getMessage() != null) {
+                JSONObject json4 = CANModel.toJSON();
+                addJSON(result, json4);
+            }
+
             result.put("type", "realtime");
-            result.put("device_id", "B2");
-            Log.d("TAG", "FINISH Creating JSON..." + result);
+            result.put("device_id", DEVICE_ID);
+            //Log.d("TAG", "FINISH Creating JSON..." + result);
             return result;
         } catch (JSONException e) {
             e.printStackTrace();
@@ -318,26 +324,29 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             locationModel.setAltitude(location.getAltitude());
             JSONObject msg_gps = locationModel.toJSON();
             locationView.update(msg_gps);
-            buffer.insertJson(msg_gps.toString());
+            if(REAL_TIME_OPERATION)
+                buffer.insertJson(msg_gps.toString());
         }
     };
 
     private BroadcastReceiver cellphoneReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //Log.d("TAG", "Cellphone Service ON");
             int battery = intent.getIntExtra("battery_cellphone", cellphoneDataModel.getBattery());
             int temperature = intent.getIntExtra("temperature_cellphone", cellphoneDataModel.getTemperature());
             int signalLevel = intent.getIntExtra("signal_cellphone", cellphoneDataModel.getSignalStrength());
             String networkType = intent.getStringExtra("network_cellphone");
+            if(networkType == null)
+                networkType = cellphoneDataModel.getNetwork_type();
             cellphoneDataModel.setBattery(battery);
             cellphoneDataModel.setTemperature(temperature);
             cellphoneDataModel.setSignalStrength(signalLevel);
             cellphoneDataModel.setNetwork_type(networkType);
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
             cellphoneDataView.update(msg_cellphone);
-            buffer.insertJson(msg_cellphone.toString());
-            Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
+            if(REAL_TIME_OPERATION)
+                buffer.insertJson(msg_cellphone.toString());
+            //Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
         }
     };
 
@@ -346,10 +355,11 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         public void onReceive(Context context, Intent intent) {
             //Log.d("TAG", "External Service ON");
             String message_external = intent.getStringExtra("update_external_sensors");
+            //Log.d("TAG", "Message: " + message_external);
             if (message_external != null) {
-                //Log.d("TAG", "Message: " + message_external);
                 CANModel.setMessage(message_external);
-                buffer.insertJson(message_external);
+                if(REAL_TIME_OPERATION)
+                    buffer.insertJson(message_external);
             }
         }
     };
@@ -377,7 +387,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             if(updAcc && updGyr && updMag){
                 JSONObject msg_sensor = sensorDataModel.toJSON();
                 sensorDataView.update(msg_sensor);
-                buffer.insertJson(msg_sensor.toString());
+                if(REAL_TIME_OPERATION)
+                    buffer.insertJson(msg_sensor.toString());
                 updAcc = updGyr = updMag = false;
             }
         }
@@ -409,9 +420,39 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         super.onResume();
     }
 
+    public void SchedulerOfflineDetect() {
+        schedulerOffline = scheduler.scheduleAtFixedRate(() -> {
+            Log.d("TAG", "START MONITORING: " + START_MONITORING);
+            if (START_MONITORING) {
+                REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(locationModel.getLatitude(), locationModel.getLongitude(),
+                        LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
+                Log.d("TAG", "Real Time: " + REAL_TIME_OPERATION);
+                if (!REAL_TIME_OPERATION) {
+                    enableHotspot(false);
+                    try {
+                        Future<Boolean> sendDataFuture = ScheduleOffLine.sendDataOfflineById(buffer);
+                        while (!sendDataFuture.isDone() && !REAL_TIME_OPERATION) {
+                            REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(locationModel.getLatitude(), locationModel.getLongitude(),
+                                    LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
+                            Thread.sleep(60000);
+                        }
+                        Log.d("TAG", "=========== OUT WHILE ========");
+                        REAL_TIME_OPERATION = true;
+                        enableHotspot(true);
+                        //schedulerOffline.cancel(false);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }, 0, 60, TimeUnit.SECONDS);
+    }
+
     @Override
     public JSONObject getCurrentDataMqtt() {
-        Log.d("TAG", "MQTT Service ON");
+        //Log.d("TAG", "MQTT Service ON");
         return concatJSON();
     }
+
+
 }

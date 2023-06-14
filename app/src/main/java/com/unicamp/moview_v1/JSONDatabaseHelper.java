@@ -7,6 +7,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import androidx.core.util.Pair;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -75,6 +77,32 @@ public class JSONDatabaseHelper extends SQLiteOpenHelper {
             return jsonObject;
         });
     }
+
+    public Future<Pair<JSONObject, Integer>> getLastJsonWithId() {
+        return executor.submit(() -> {
+            Pair<JSONObject, Integer> result = null;
+            String selectQuery = "SELECT * FROM " + TABLE_NAME + " ORDER BY " + COLUMN_ID + " DESC LIMIT 1";
+            SQLiteDatabase db = this.getWritableDatabase();
+            Cursor cursor = db.rawQuery(selectQuery, null);
+
+            if (cursor.moveToFirst()) {
+                @SuppressLint("Range") String jsonData = cursor.getString(cursor.getColumnIndex(COLUMN_JSON));
+                JSONObject jsonObject;
+                try {
+                    jsonObject = new JSONObject(jsonData);
+                    @SuppressLint("Range") int id = cursor.getInt(cursor.getColumnIndex(COLUMN_ID));
+                    result = new Pair<>(jsonObject, id);
+                    db.delete(TABLE_NAME, COLUMN_ID + " = ?", new String[]{String.valueOf(id)});
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            cursor.close();
+            db.close();
+            return result;
+        });
+    }
+
 
     public Future<Integer> getJsonCount() {
         return executor.submit(() -> {

@@ -30,7 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class MqttService extends Service {
-    private MqttAsyncClient client;
+    private static MqttAsyncClient client;
     private ScheduledExecutorService scheduler;
     private ServiceCallbacks serviceCallbacks;
 
@@ -115,8 +115,8 @@ public class MqttService extends Service {
         scheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                Log.d("TAG", "Scheduler MQTT 1s");
-                if (serviceCallbacks != null) {
+                //Log.d("TAG", "Scheduler MQTT 1s");
+                if (serviceCallbacks != null && MainActivity.REAL_TIME_OPERATION) {
                     JSONObject msg = serviceCallbacks.getCurrentDataMqtt();
                     Log.d("TAG", "Callbacks Check" + msg);
                     sendMessageMQTT(msg);
@@ -137,14 +137,14 @@ public class MqttService extends Service {
         }
     }
 
-    public void sendMessageMQTT(JSONObject msg) {
+    public static void sendMessageMQTT(JSONObject msg) {
         try {
             int qos = 2;
             MqttMessage message = new MqttMessage();
             message.setPayload(msg.toString().getBytes());
             message.setQos(qos);
             client.publish(TOPIC, message);
-            Log.d("TAG", "Publicado...");
+            //Log.d("TAG", "Publicado...");
         } catch (MqttException e) {
             Log.d("TAG", "Reconectando...");
             Executors.newSingleThreadExecutor().execute(() -> {

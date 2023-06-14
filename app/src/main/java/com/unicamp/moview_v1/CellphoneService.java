@@ -10,27 +10,41 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.hardware.SensorManager;
-import android.hardware.usb.UsbManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.IBinder;
-import android.telephony.SignalStrength;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoCdma;
+import android.telephony.CellInfoGsm;
+import android.telephony.CellInfoLte;
+import android.telephony.CellInfoNr;
+import android.telephony.CellInfoWcdma;
+import android.telephony.CellSignalStrengthCdma;
+import android.telephony.CellSignalStrengthGsm;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
+import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.TelephonyManager;
+import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
+import android.Manifest;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
+import java.util.List;
+
 public class CellphoneService extends Service {
     public static final String CHANNEL_ID = "CellphoneServiceChannel";
     private static final String CELLPHONE_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_CELLPHONE_SENSORS";
     private static final String CELLPHONE_KEY_BATTERY = "battery_cellphone", CELLPHONE_KEY_TEMPERATURE = "temperature_cellphone";
-    private static final String CELLPHONE_KEY_SIGNAL = "signal_cellphone",CELLPHONE_KEY_NETWORK = "network_cellphone";
+    private static final String CELLPHONE_KEY_SIGNAL = "signal_cellphone", CELLPHONE_KEY_NETWORK = "network_cellphone";
     private BroadcastReceiver CellphoneReceiver;
     private TelephonyManager telephonyManager;
+    private String networkType = "None";
+    private int signalStrength = -1;
 
     @Override
     public void onCreate() {
@@ -42,42 +56,53 @@ public class CellphoneService extends Service {
                 int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                 int temperature = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
                 temperature = (int) (temperature / 10.0f);
-                int signalLevel = -1;
-                String networkType = "None";
-                if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                    android.telephony.SignalStrength signalStrength = telephonyManager.getSignalStrength();
-                    networkType = getNetworkTypeString(telephonyManager.getNetworkType());
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // Versión de Android 10 o superior
-                        signalLevel = signalStrength.getLevel();
-                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        // Versión de Android 9 (Pie)
-                        signalLevel = signalStrength.getLevel();
-                    } else {
-                        // Versiones anteriores a Android 9
-                        signalLevel = signalStrength.getGsmSignalStrength();
-                    }
-                }
+                checkSignalStrength();
                 Intent cellphoneIntent = new Intent(CELLPHONE_SEND_MESSAGE);
                 cellphoneIntent.putExtra(CELLPHONE_KEY_BATTERY, level);
                 cellphoneIntent.putExtra(CELLPHONE_KEY_TEMPERATURE, temperature);
-                cellphoneIntent.putExtra(CELLPHONE_KEY_SIGNAL, signalLevel);
+                cellphoneIntent.putExtra(CELLPHONE_KEY_SIGNAL, signalStrength);
                 cellphoneIntent.putExtra(CELLPHONE_KEY_NETWORK, networkType);
                 sendBroadcast(cellphoneIntent);
             }
         };
     }
 
-    public String getNetworkTypeString(int networkType) {
-        switch (networkType) {
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-                return "GPRS";
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-                return "EDGE";
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-                return "UMTS";
-            default:
-                return "Desconocido";
+    public void checkSignalStrength() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // Handle permission request here
+            return;
+        }
+
+        List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
+        if (cellInfos != null) {
+            for (CellInfo cellInfo : cellInfos) {
+                if (cellInfo instanceof CellInfoGsm) {
+                    CellSignalStrengthGsm cellSignalStrengthGsm = ((CellInfoGsm) cellInfo).getCellSignalStrength();
+                    signalStrength = cellSignalStrengthGsm.getDbm();
+                    networkType = "GSM";
+                    // Handle GSM signal strength
+                } else if (cellInfo instanceof CellInfoCdma) {
+                    CellSignalStrengthCdma cellSignalStrengthCdma = ((CellInfoCdma) cellInfo).getCellSignalStrength();
+                    signalStrength = cellSignalStrengthCdma.getDbm();
+                    networkType = "CDMA";
+                    // Handle CDMA signal strength
+                } else if (cellInfo instanceof CellInfoLte) {
+                    CellSignalStrengthLte cellSignalStrengthLte = ((CellInfoLte) cellInfo).getCellSignalStrength();
+                    signalStrength = cellSignalStrengthLte.getDbm();
+                    networkType = "LTE";
+                    // Handle LTE signal strength
+                } else if (cellInfo instanceof CellInfoWcdma) {
+                    CellSignalStrengthWcdma cellSignalStrengthWcdma = ((CellInfoWcdma) cellInfo).getCellSignalStrength();
+                    signalStrength = cellSignalStrengthWcdma.getDbm();
+                    networkType = "WCDMA";
+                    // Handle WCDMA signal strength
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo instanceof CellInfoNr) {
+                    CellSignalStrengthNr cellSignalStrengthNr = (CellSignalStrengthNr) ((CellInfoNr) cellInfo).getCellSignalStrength();
+                    signalStrength = cellSignalStrengthNr.getSsRsrp();
+                    networkType = "NR5G";
+                    // Handle NR (5G) signal strength
+                }
+            }
         }
     }
 
