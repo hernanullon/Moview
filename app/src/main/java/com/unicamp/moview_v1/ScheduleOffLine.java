@@ -2,20 +2,29 @@ package com.unicamp.moview_v1;
 
 import android.location.Location;
 import android.util.Log;
-
 import androidx.core.util.Pair;
-
 import org.json.JSONObject;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 
 public class ScheduleOffLine {
+    private static final int TIMEOUT = 3000;
+    private static final byte[] RELE1_ON = { (byte) 0xA0, 0x01, 0x01, (byte) 0xA2 };
+    private static final byte[] RELE1_OFF = { (byte) 0xA0, 0x01, 0x00, (byte) 0xA1 };
+    private static final byte[] RELE2_ON = { (byte) 0xA0, 0x02, 0x01, (byte) 0xA3 };
+    private static final byte[] RELE2_OFF = { (byte) 0xA0, 0x02, 0x00, (byte) 0xA2 };
 
     public static Future<Boolean> sendDataOfflineById(JSONDatabaseHelper buffer) {
         return Executors.newSingleThreadExecutor().submit(() -> {
@@ -67,32 +76,6 @@ public class ScheduleOffLine {
         });
     }
 
-//    public static Future<Boolean> sendDataOffline(JSONDatabaseHelper buffer){
-//        return Executors.newSingleThreadExecutor().submit(() -> {
-//            Log.d("TAG", "Antes: ");
-//            try {
-//                int lastId = buffer.getJsonCount().get();
-//                int currentId = 1;
-//                Log.d("TAG", "Despues Count: ");
-//                while (currentId <= lastId && !MainActivity.REAL_TIME_OPERATION) {
-//                    JSONObject jsonObject = buffer.getLastJson().get();
-//                    if (jsonObject != null) {
-//                        // Enviar el elemento JSON a través de MQTT
-//                        jsonObject.put("device_id", MainActivity.DEVICE_ID);
-//                        Log.d("TAG", "Descargando: " + jsonObject.toString());
-//                        MqttService.sendMessageMQTT(jsonObject);
-//                        Log.d("TAG", "Enviado MQTT");
-//                    }
-//                    currentId++;
-//                }
-//                return true;
-//            } catch (InterruptedException | ExecutionException e) {
-//                return false;
-//            }
-//        });
-//    }
-
-
     public static boolean isOverWorkDay(double lat1, double lon1, double lat2, double lon2, LocalTime finalTimeWork, LocalTime initialTimeWork){
         ZonedDateTime time_now = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
         Location loc1 = new Location("");
@@ -117,6 +100,57 @@ public class ScheduleOffLine {
             }
         }
         return true;
+    }
+
+    public static void isDeviceConnected(String ipAddress) {
+        try {
+            InetAddress inetAddress = InetAddress.getByName(ipAddress);
+            if(inetAddress.isReachable(TIMEOUT)){
+                select_actions_rele();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void select_actions_rele(){
+        if(MainActivity.REAL_TIME_OPERATION) {
+            if (MainActivity.LEVEL_BATTERY < 30)
+                sendTcpMessage(RELE1_ON);
+            if (MainActivity.LEVEL_BATTERY > 90)
+                sendTcpMessage(RELE1_OFF);
+            if (MainActivity.TEMPERATURE_BATTERY > 25)
+                sendTcpMessage(RELE2_ON);
+            if (MainActivity.TEMPERATURE_BATTERY < 15)
+                sendTcpMessage(RELE2_OFF);
+        }
+    }
+
+    private static void sendTcpMessage(byte[] message) {
+        Socket clientSocket = null;
+        DataOutputStream outputStream = null;
+        try {
+            Log.d("TAG", "Mensaje Preparado" + Arrays.toString(message));
+            clientSocket = new Socket(MainActivity.IP_ADDRESS_RELE, 8080);
+            outputStream = new DataOutputStream(clientSocket.getOutputStream());
+            outputStream.write(message);
+            outputStream.flush();
+            Log.d("TAG", "Mensaje enviado");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.d("TAG", "Mensaje NO enviado: " + e);
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                if (clientSocket != null) {
+                    clientSocket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }

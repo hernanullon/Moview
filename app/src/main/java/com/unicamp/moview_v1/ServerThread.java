@@ -2,14 +2,22 @@ package com.unicamp.moview_v1;
 
 import android.content.Context;
 import android.os.Handler;
+import android.util.Log;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 
 public class ServerThread extends Thread {
     private final int port;
     private final Context context;
+
+
+
+
 
     public ServerThread(int port, Context context) {
         this.port = port;
@@ -22,12 +30,29 @@ public class ServerThread extends Thread {
             ServerSocket serverSocket = new ServerSocket(port);
             while (!Thread.currentThread().isInterrupted()) {
                 Socket socket = serverSocket.accept();
-                NetworkThread networkThread = new NetworkThread(socket, context);
-                networkThread.start();
+                InetAddress inetAddress = socket.getInetAddress();
+                Log.d("TAG", "Nuevo dispositivo conectado " + inetAddress.toString());
+                if(inetAddress.toString().equals(MainActivity.IP_ADDRESS_RELE)) {
+                    NetworkThread networkThread = new NetworkThread(socket, port, context);
+                    networkThread.start();
+                }
             }
             serverSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+
 }
+
+
+
+
+//                InetAddress inetAddress = InetAddress.getByName(IP_ADDRESS_RELE);
+//                if (inetAddress.isReachable(TIMEOUT)) {
+//
+//                }
+//                else {
+//                    networkThread.start();
+//                }

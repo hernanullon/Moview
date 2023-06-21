@@ -118,7 +118,6 @@ public class MqttService extends Service {
                 //Log.d("TAG", "Scheduler MQTT 1s");
                 if (serviceCallbacks != null && MainActivity.REAL_TIME_OPERATION) {
                     JSONObject msg = serviceCallbacks.getCurrentDataMqtt();
-                    Log.d("TAG", "Callbacks Check" + msg);
                     sendMessageMQTT(msg);
                 }
             }
@@ -144,7 +143,7 @@ public class MqttService extends Service {
             message.setPayload(msg.toString().getBytes());
             message.setQos(qos);
             client.publish(TOPIC, message);
-            //Log.d("TAG", "Publicado...");
+            Log.d("TAG", "Public: " + msg);
         } catch (MqttException e) {
             Log.d("TAG", "Reconectando...");
             Executors.newSingleThreadExecutor().execute(() -> {

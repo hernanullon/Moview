@@ -69,10 +69,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private JSONDatabaseHelper buffer;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private boolean updAcc = false, updGyr = false, updMag = false;
-
     private Button btnStart;
 
-    public static boolean START_MONITORING = false;
+
     private MqttService mqttService;
     private boolean bound = false;
 
@@ -81,11 +80,18 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     public static final float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
     //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
-    public static final String DEVICE_ID = "B1";
+
     //public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
     public static final LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
     public static final LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
+
     public static boolean REAL_TIME_OPERATION = true;
+    public static String DEVICE_ID = "B1";
+    public static boolean START_MONITORING = false;
+
+    public static int LEVEL_BATTERY = -1;
+    public static int TEMPERATURE_BATTERY = -1;
+    public static String IP_ADDRESS_RELE = "192.168.43.93";
 
 
 
@@ -123,8 +129,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         buffer = new JSONDatabaseHelper(this);
         bindService(new Intent(this, MqttService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
-        enableHotspot(true);
-        Log.d("TAG", "Hotspot ACTIVADO...");
+
 
         Intent intent = new Intent();
         intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
@@ -143,6 +148,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             public void onClick(View v) {
                 START_MONITORING = true;
                 StartMonitoring();
+                enableHotspot(true);
+                Log.d("TAG", "Hotspot ACTIVADO...");
                 startServer();
                 SchedulerOfflineDetect();
             }
@@ -338,15 +345,24 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             String networkType = intent.getStringExtra("network_cellphone");
             if(networkType == null)
                 networkType = cellphoneDataModel.getNetwork_type();
+
+            JSONObject actual_msg_cellphone = cellphoneDataModel.toJSON();
+
             cellphoneDataModel.setBattery(battery);
             cellphoneDataModel.setTemperature(temperature);
             cellphoneDataModel.setSignalStrength(signalLevel);
             cellphoneDataModel.setNetwork_type(networkType);
+
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
-            cellphoneDataView.update(msg_cellphone);
-            if(REAL_TIME_OPERATION)
-                buffer.insertJson(msg_cellphone.toString());
-            //Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
+
+            if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString()))
+                //Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
+                cellphoneDataView.update(msg_cellphone);
+                LEVEL_BATTERY = battery;
+                TEMPERATURE_BATTERY = temperature;
+                if(REAL_TIME_OPERATION)
+                    buffer.insertJson(msg_cellphone.toString());
+
         }
     };
 
@@ -444,6 +460,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                         e.printStackTrace();
                     }
                 }
+                else{
+                    ScheduleOffLine.isDeviceConnected(IP_ADDRESS_RELE);
+                }
             }
         }, 0, 60, TimeUnit.SECONDS);
     }
@@ -453,6 +472,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         //Log.d("TAG", "MQTT Service ON");
         return concatJSON();
     }
+
+
 
 
 }
