@@ -15,6 +15,8 @@ public class ExternalDataModel {
     public JSONObject toJSON() {
         try {
             JSONObject json = new JSONObject(getMessage());
+            json.put("timestamp_sys", System.currentTimeMillis());
+            json.put("device_id", MainActivity.DEVICE_ID);
             return json;
         } catch (JSONException e){
             e.printStackTrace();

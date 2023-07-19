@@ -1,31 +1,72 @@
 <resources>
+    <string name="btn_continue">Continue</string>
+    <string name="btn_back">Back</string>
+    <string name="btn_add">ADD</string>
+    <string name="text_init">Init:</string>
+    <string name="text_workday_time">Workday Configurations</string>
+    <string name="text_finish">Finish:</string>
+    <string name="text_days">Days:</string>
+    <string name="text_holidays">Holidays:</string>
+    <string name="hint_time">Enter Time</string>
+
+
+    <string name="text_cellphone_config">Cellphone Configurations</string>
+    <string name="temperature_range">Temperature range</string>
+    <string name="battery_range">Battery range</string>
+    <string name="location_checkpoint">Location Checkpoint</string>
+    <string name="temperature_min"/>
+    <string name="temperature_max"/>
+    <string name="battery_min"/>
+    <string name="battery_max"/>
+    <string name="latitud_checkpoint"/>
+    <string name="longitud_checkpoint"/>
+    <string name="hint_temperature">Enter number</string>
+    <string name="hint_battery">Enter number</string>
+    <string name="hint_latitude">Enter Latitude</string>
+    <string name="hint_longitude">Enter Longitude</string>
+
+    <string name="text_rate_parameters">Configure Parameters</string>
+    <string name="text_offline_rate">Offline</string>
+    <string name="text_real_time_rate">Real-Time</string>
+    <string name="text_collect_rate">Collect Rate</string>
+
+    <string name="text_inertial">Inertial Data</string>
+    <string name="text_location">Location Data</string>
+    <string name="text_can">CAN Data</string>
+    <string name="text_climatic">Climatic Data</string>
+    <string name="hint_default_rate">Rate</string>
+
+    <string name="switch_empty"></string>
+
+    <string-array name="time_options">
+        <item>ms</item>
+        <item>s</item>
+        <item>min</item>
+    </string-array>
+
+
+
     <string name="app_name">Moview_v1</string>
-
     <string name="btnStart">Start</string>
-
     <string name="sensors">Inertial Sensors:</string>
     <string name="sensorsValue" />
-
     <string name="gps">GPS Data:</string>
     <string name="gpsValue" />
-
     <string name="can">CAN Data:</string>
     <string name="canValue" />
-
     <string name="climatic">Climatic Data:</string>
     <string name="climaticValue" />
-
     <string name="cellphone">Cellphone Data:</string>
     <string name="cellphoneValue" />
-
     <string name="accel">Accelerometer:</string>
     <string name="accelValue" />
     <string name="gyro">Gyroscope:</string>
     <string name="gyroValue" />
     <string name="mag">Magnetometer:</string>
     <string name="magValue" />
-
     <string name="string_count" />
+
+
 
     <string name="title_realtime">Real Time Collect</string>
     <string name="scText_Sensors">Inertial Data</string>

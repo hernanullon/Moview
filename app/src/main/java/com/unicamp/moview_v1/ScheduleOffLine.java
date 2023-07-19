@@ -115,14 +115,15 @@ public class ScheduleOffLine {
 
     private static void select_actions_rele(){
         if(MainActivity.REAL_TIME_OPERATION) {
-            if (MainActivity.LEVEL_BATTERY < 30)
-                sendTcpMessage(RELE1_ON);
-            if (MainActivity.LEVEL_BATTERY > 90)
-                sendTcpMessage(RELE1_OFF);
-            if (MainActivity.TEMPERATURE_BATTERY > 25)
+            if (MainActivity.TEMPERATURE_BATTERY > MainActivity.TEMP_MAX)
                 sendTcpMessage(RELE2_ON);
-            if (MainActivity.TEMPERATURE_BATTERY < 15)
+            if (MainActivity.TEMPERATURE_BATTERY < MainActivity.TEMP_MIN)
                 sendTcpMessage(RELE2_OFF);
+            if (MainActivity.LEVEL_BATTERY < MainActivity.BATTERY_MIN)
+                sendTcpMessage(RELE1_ON);
+            if (MainActivity.LEVEL_BATTERY > MainActivity.BATTERY_MAX)
+                sendTcpMessage(RELE1_OFF);
+
         }
     }
 
@@ -136,7 +137,8 @@ public class ScheduleOffLine {
             outputStream.write(message);
             outputStream.flush();
             Log.d("TAG", "Mensaje enviado");
-        } catch (IOException e) {
+            Thread.sleep(10000);
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             Log.d("TAG", "Mensaje NO enviado: " + e);
         } finally {

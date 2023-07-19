@@ -42,6 +42,8 @@ public class SensorDataModel {
     public JSONObject toJSON() {
         try {
             JSONObject json = new JSONObject();
+            json.put("timestamp_sys", System.currentTimeMillis());
+            json.put("device_id", MainActivity.DEVICE_ID);
             json.put("type", "inertial");
             json.put("accX", accelerometerValues[0]);
             json.put("accY", accelerometerValues[1]);
@@ -52,9 +54,6 @@ public class SensorDataModel {
             json.put("magX", magnetometerValues[0]);
             json.put("magY", magnetometerValues[1]);
             json.put("magZ", magnetometerValues[2]);
-            //json.put("accelerometer", new JSONArray(accelerometerValues));
-            //json.put("gyroscope", new JSONArray(gyroscopeValues));
-            //json.put("magnetometer", new JSONArray(magnetometerValues));
             return json;
         } catch (JSONException e){
             e.printStackTrace();

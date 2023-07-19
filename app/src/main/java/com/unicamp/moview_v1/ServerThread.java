@@ -15,10 +15,6 @@ public class ServerThread extends Thread {
     private final int port;
     private final Context context;
 
-
-
-
-
     public ServerThread(int port, Context context) {
         this.port = port;
         this.context = context.getApplicationContext();
@@ -32,7 +28,7 @@ public class ServerThread extends Thread {
                 Socket socket = serverSocket.accept();
                 InetAddress inetAddress = socket.getInetAddress();
                 Log.d("TAG", "Nuevo dispositivo conectado " + inetAddress.toString());
-                if(inetAddress.toString().equals(MainActivity.IP_ADDRESS_RELE)) {
+                if(!inetAddress.toString().equals(MainActivity.IP_ADDRESS_RELE)) {
                     NetworkThread networkThread = new NetworkThread(socket, port, context);
                     networkThread.start();
                 }
@@ -42,17 +38,4 @@ public class ServerThread extends Thread {
             e.printStackTrace();
         }
     }
-
-
 }
-
-
-
-
-//                InetAddress inetAddress = InetAddress.getByName(IP_ADDRESS_RELE);
-//                if (inetAddress.isReachable(TIMEOUT)) {
-//
-//                }
-//                else {
-//                    networkThread.start();
-//                }

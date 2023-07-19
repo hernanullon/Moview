@@ -21,8 +21,10 @@ public class LocationModel {
     public JSONObject toJSON() {
         try {
             JSONObject json = new JSONObject();
+            json.put("timestamp_sys", System.currentTimeMillis());
+            json.put("device_id", MainActivity.DEVICE_ID);
             json.put("type", "gps");
-            json.put("timestamp", timestamp);
+            json.put("timestamp_gps", timestamp);
             json.put("lat", latitude);
             json.put("long", longitude);
             json.put("speed", speed);

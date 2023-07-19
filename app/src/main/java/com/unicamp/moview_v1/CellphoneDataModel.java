@@ -21,6 +21,7 @@ public class CellphoneDataModel {
     public JSONObject toJSON() {
         try {
             JSONObject json = new JSONObject();
+            json.put("device_id", MainActivity.DEVICE_ID);
             json.put("type", "cellphone");
             json.put("battery", battery);
             json.put("temperature", temperature);

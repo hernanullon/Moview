@@ -22,7 +22,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
-public class GPSService extends Service implements LocationListener {
+public class LocationService extends Service implements LocationListener {
     public static final String CHANNEL_ID = "GPSServiceChannel";
     private static final String ACTION_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_LOCATION";
     private static final String MESSAGE_KEY = "update_location";

@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.location.Location;
@@ -43,7 +44,10 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -78,17 +82,19 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private ScheduledFuture<?> schedulerOffline;
 
-    public static final float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
+    public static float LATITUDE_FINAL, LONGITUDE_FINAL;
+    //public static float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
     //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
 
     //public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
-    public static final LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
-    public static final LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
+    public static LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
+    public static LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
 
     public static boolean REAL_TIME_OPERATION = true;
     public static String DEVICE_ID = "B1";
     public static boolean START_MONITORING = false;
 
+    public static int BATTERY_MAX, BATTERY_MIN, TEMP_MAX, TEMP_MIN;
     public static int LEVEL_BATTERY = -1;
     public static int TEMPERATURE_BATTERY = -1;
     public static String IP_ADDRESS_RELE = "192.168.43.93";
@@ -99,6 +105,36 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        SharedPreferences sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
+        String timeInit = sharedPreferences.getString("timeInit", "07:00");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        INITIAL_TIME_WORK = LocalTime.parse(timeInit, formatter);
+
+        String timeFinish = sharedPreferences.getString("timeFinish", "23:00");
+        FINAL_TIME_WORK = LocalTime.parse(timeFinish, formatter);
+
+        Set<String> selectedDates = sharedPreferences.getStringSet("selectedDates", new HashSet<>());
+        Set<String> selectedDays = sharedPreferences.getStringSet("selectedDays", new HashSet<>());
+        TEMP_MIN = sharedPreferences.getInt("temperatureMin",15);
+        TEMP_MAX = sharedPreferences.getInt("temperatureMax",25);
+        BATTERY_MIN = sharedPreferences.getInt("batteryMin",30);
+        BATTERY_MAX = sharedPreferences.getInt("batteryMax",90);
+        LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.816113211714086);
+        LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.07272459491293);
+
+        //"InertialRate"
+        //"LocationRate"
+        //"CANRate"
+        //"ClimaticRate"
+
+        //"InertialRT"
+        //"LocationRT"
+        //"CANRT"
+        //"ClimaticRT"
+
+
+        Log.d("TAG", "Dados: " + TEMP_MIN +" "+ TEMP_MAX +" "+ BATTERY_MIN +" "+ BATTERY_MAX);
 
         btnStart = this.findViewById(R.id.btn_start);
 
@@ -128,8 +164,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
         buffer = new JSONDatabaseHelper(this);
         bindService(new Intent(this, MqttService.class), serviceConnection, Context.BIND_AUTO_CREATE);
-
-
 
         Intent intent = new Intent();
         intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
@@ -260,7 +294,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
             result.put("type", "realtime");
             result.put("device_id", DEVICE_ID);
-            //Log.d("TAG", "FINISH Creating JSON..." + result);
             return result;
         } catch (JSONException e) {
             e.printStackTrace();
@@ -291,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     }
 
     private void startServices() {
-        Intent serviceIntent1 = new Intent(this, GPSService.class);
+        Intent serviceIntent1 = new Intent(this, LocationService.class);
         ContextCompat.startForegroundService(this, serviceIntent1);
 
         Intent serviceIntent2 = new Intent(this, SensorsService.class);
@@ -305,7 +338,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     }
 
     private void stopServices() {
-        Intent serviceIntent1 = new Intent(this, GPSService.class);
+        Intent serviceIntent1 = new Intent(this, LocationService.class);
         stopService(serviceIntent1);
 
         Intent serviceIntent2 = new Intent(this, SensorsService.class);
@@ -330,9 +363,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             locationModel.setSpeed(location.getSpeed());
             locationModel.setAltitude(location.getAltitude());
             JSONObject msg_gps = locationModel.toJSON();
-            locationView.update(msg_gps);
             if(REAL_TIME_OPERATION)
                 buffer.insertJson(msg_gps.toString());
+            locationView.update(msg_gps);
         }
     };
 
@@ -355,13 +388,20 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
 
-            if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString()))
-                //Log.d("TAG", "Cellphone:" + msg_cellphone.toString());
-                cellphoneDataView.update(msg_cellphone);
+            if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString())){
+                Log.d("TAG", "Message: " + msg_cellphone);
+                try {
+                    msg_cellphone.put("timestamp_sys", System.currentTimeMillis());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
                 LEVEL_BATTERY = battery;
                 TEMPERATURE_BATTERY = temperature;
                 if(REAL_TIME_OPERATION)
                     buffer.insertJson(msg_cellphone.toString());
+                cellphoneDataView.update(msg_cellphone);
+            }
+
 
         }
     };
@@ -402,9 +442,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             }
             if(updAcc && updGyr && updMag){
                 JSONObject msg_sensor = sensorDataModel.toJSON();
-                sensorDataView.update(msg_sensor);
                 if(REAL_TIME_OPERATION)
                     buffer.insertJson(msg_sensor.toString());
+                sensorDataView.update(msg_sensor);
                 updAcc = updGyr = updMag = false;
             }
         }
