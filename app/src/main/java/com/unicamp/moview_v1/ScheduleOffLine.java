@@ -21,16 +21,17 @@ import java.util.concurrent.Future;
 
 public class ScheduleOffLine {
     private static final int TIMEOUT = 3000;
-    private static final byte[] RELE1_ON = { (byte) 0xA0, 0x01, 0x01, (byte) 0xA2 };
-    private static final byte[] RELE1_OFF = { (byte) 0xA0, 0x01, 0x00, (byte) 0xA1 };
-    private static final byte[] RELE2_ON = { (byte) 0xA0, 0x02, 0x01, (byte) 0xA3 };
-    private static final byte[] RELE2_OFF = { (byte) 0xA0, 0x02, 0x00, (byte) 0xA2 };
+    public static final byte[] RELE1_ON = { (byte) 0xA0, 0x01, 0x01, (byte) 0xA2 };
+    public static final byte[] RELE1_OFF = { (byte) 0xA0, 0x01, 0x00, (byte) 0xA1 };
+    public static final byte[] RELE2_ON = { (byte) 0xA0, 0x02, 0x01, (byte) 0xA3 };
+    public static final byte[] RELE2_OFF = { (byte) 0xA0, 0x02, 0x00, (byte) 0xA2 };
 
     public static Future<Boolean> sendDataOfflineById(JSONDatabaseHelper buffer) {
         return Executors.newSingleThreadExecutor().submit(() -> {
             long startTime = System.currentTimeMillis();
             int packetsSent = 0;
             Pair<JSONObject, Integer> jsonWithId;
+            ZonedDateTime time_now = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
             do {
                 jsonWithId = buffer.getLastJsonWithId().get();
                 JSONObject jsonObject = jsonWithId.first;
@@ -46,32 +47,14 @@ public class ScheduleOffLine {
             Log.d("TAG", "Paquetes enviados: " + packetsSent);
             Log.d("TAG", "Tiempo total de envío: " + totalTime + " ms");
 
-            return true;
-        });
-    }
+            JSONObject jsonResume = new JSONObject();
+            jsonResume.put("type","offline_data");
+            jsonResume.put("timestamp_sys",time_now.toLocalTime().withNano(0));
+            jsonResume.put("device_id","B-Test");
+            jsonResume.put("number_packets",packetsSent);
+            jsonResume.put("total_time",totalTime);
+            MqttService.sendMessageMQTT(jsonResume);
 
-
-    public static Future<Boolean> sendDataOffline(JSONDatabaseHelper buffer) {
-        return Executors.newSingleThreadExecutor().submit(() -> {
-            long startTime = System.currentTimeMillis();
-            int lastId = buffer.getJsonCount().get();
-            Log.d("TAG", "Query Count: ");
-            int packetsSent = 0;
-
-            for (int currentId = 1; currentId <= lastId && !MainActivity.REAL_TIME_OPERATION; currentId++) {
-                JSONObject jsonObject = buffer.getLastJson().get();
-                if (jsonObject != null) {
-
-                    jsonObject.put("device_id", MainActivity.DEVICE_ID);
-                    MqttService.sendMessageMQTT(jsonObject);
-                    //Log.d("TAG", "Descargado: " + jsonObject.toString());
-                    packetsSent++;
-                }
-            }
-            long endTime = System.currentTimeMillis();
-            long totalTime = endTime - startTime;
-            Log.d("TAG", "Paquetes enviados: " + packetsSent);
-            Log.d("TAG", "Tiempo total de envío: " + totalTime + " ms");
             return true;
         });
     }
@@ -84,20 +67,14 @@ public class ScheduleOffLine {
         loc1.setLongitude(lon1); loc2.setLongitude(lon2);
         float distance = loc1.distanceTo(loc2);
         Log.d("TAG", "Distancia: " + String.valueOf(distance));
-        if(distance <= 100) {
-            LocalTime hnow = time_now.toLocalTime().withNano(0);
-            LocalTime hfinal = finalTimeWork.withNano(0);
-            LocalTime hinitial = initialTimeWork.withNano(0);
-            Log.d("TAG", "H: " + hnow.toString() +" - "+ hfinal.toString()+" - " + hinitial.toString() );
-//            if ((hnow.isAfter(hfinal) && hnow.isBefore(hinitial))) {
-//                Log.d("TAG", "Real Time OFF" );
-//                return false;
-//            }
-            if ((hnow.isAfter(hfinal) && hnow.isBefore(LocalTime.MAX)) ||
-                    (hnow.isAfter(LocalTime.MIN) && hnow.isBefore(hinitial))) {
-                Log.d("TAG", "Real Time OFF" );
-                return false;
-            }
+        //if(distance <= 100) {
+        LocalTime hnow = time_now.toLocalTime().withNano(0);
+        LocalTime hfinal = finalTimeWork.withNano(0);
+        LocalTime hinitial = initialTimeWork.withNano(0);
+        Log.d("TAG", "H: " + hnow.toString() +" - "+ hfinal.toString()+" - " + hinitial.toString() );
+        if (hnow.isAfter(hinitial) && hnow.isBefore(hfinal)){
+            Log.d("TAG", "Real Time OFF" );
+            return false;
         }
         return true;
     }
@@ -113,7 +90,7 @@ public class ScheduleOffLine {
         }
     }
 
-    private static void select_actions_rele(){
+    public static void select_actions_rele(){
         if(MainActivity.REAL_TIME_OPERATION) {
             if (MainActivity.TEMPERATURE_BATTERY > MainActivity.TEMP_MAX)
                 sendTcpMessage(RELE2_ON);
@@ -127,7 +104,7 @@ public class ScheduleOffLine {
         }
     }
 
-    private static void sendTcpMessage(byte[] message) {
+    public static void sendTcpMessage(byte[] message) {
         Socket clientSocket = null;
         DataOutputStream outputStream = null;
         try {

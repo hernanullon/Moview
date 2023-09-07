@@ -90,19 +90,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <EditText
-                android:id="@+id/editText_inertial_OFF"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:ems="10"
-                android:hint="@string/hint_default_rate"
-                android:importantForAutofill="no"
-                android:inputType="number"
-                android:textAlignment="center"
-                android:textColorHint="#757575"
-                tools:ignore="DuplicateSpeakableTextCheck" />
-
             <Spinner
                 android:id="@+id/spinnerInertial_RT"
                 android:layout_width="0dp"

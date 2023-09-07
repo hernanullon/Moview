@@ -86,12 +86,11 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     //public static float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
     //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
 
-    //public static final LocalTime FINAL_TIME_WORK = LocalTime.of(22, 15, 0);
     public static LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
     public static LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
 
     public static boolean REAL_TIME_OPERATION = true;
-    public static String DEVICE_ID = "B1";
+    public static String DEVICE_ID = "B-Test";
     public static boolean START_MONITORING = false;
 
     public static int BATTERY_MAX, BATTERY_MIN, TEMP_MAX, TEMP_MIN;
@@ -99,6 +98,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     public static int TEMPERATURE_BATTERY = -1;
     public static String IP_ADDRESS_RELE = "192.168.43.93";
 
+    private SharedPreferences sharedPreferences;
 
 
     @Override
@@ -106,32 +106,39 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        SharedPreferences sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
-        String timeInit = sharedPreferences.getString("timeInit", "07:00");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-        INITIAL_TIME_WORK = LocalTime.parse(timeInit, formatter);
+        sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
 
-        String timeFinish = sharedPreferences.getString("timeFinish", "23:00");
+        String defaultTimeInit = "07:00";
+        String defaultTimeFinish = "23:00";
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        String timeInit = sharedPreferences.getString("timeInit", defaultTimeInit);
+        String timeFinish = sharedPreferences.getString("timeFinish", defaultTimeFinish);
+
+        timeInit = (timeInit != null && !timeInit.isEmpty()) ? timeInit : defaultTimeInit;
+        timeFinish = (timeFinish != null && !timeFinish.isEmpty()) ? timeFinish : defaultTimeFinish;
+
+        INITIAL_TIME_WORK = LocalTime.parse(timeInit, formatter);
         FINAL_TIME_WORK = LocalTime.parse(timeFinish, formatter);
+
+        Log.d("TAG", "Tempo: " + INITIAL_TIME_WORK +" - "+ FINAL_TIME_WORK );
 
         Set<String> selectedDates = sharedPreferences.getStringSet("selectedDates", new HashSet<>());
         Set<String> selectedDays = sharedPreferences.getStringSet("selectedDays", new HashSet<>());
+
         TEMP_MIN = sharedPreferences.getInt("temperatureMin",15);
         TEMP_MAX = sharedPreferences.getInt("temperatureMax",25);
-        BATTERY_MIN = sharedPreferences.getInt("batteryMin",30);
+        BATTERY_MIN = sharedPreferences.getInt("batteryMin",45);
         BATTERY_MAX = sharedPreferences.getInt("batteryMax",90);
-        LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.816113211714086);
-        LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.07272459491293);
 
-        //"InertialRate"
-        //"LocationRate"
-        //"CANRate"
-        //"ClimaticRate"
+        // TEST ONIBUS ELETRICO
+        //LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.816113211714086);
+        //LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.07272459491293);
 
-        //"InertialRT"
-        //"LocationRT"
-        //"CANRT"
-        //"ClimaticRT"
+        // TEST LABORATORIO
+        LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.82149447593838);
+        LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.0664276368916);
+
+        sharedPreferences.getInt("InertialRate",2);
 
 
         Log.d("TAG", "Dados: " + TEMP_MIN +" "+ TEMP_MAX +" "+ BATTERY_MIN +" "+ BATTERY_MAX);
@@ -221,9 +228,10 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     }
 
     public void enableHotspot(boolean enable) {
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         // Comprueba si la versión de Android es anterior a Oreo (Android 8.0)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            Log.d("TAG", "VERSION ANDROID < 8...");
             try {
                 // Desactiva el Wi-Fi antes de habilitar el hotspot
                 wifiManager.setWifiEnabled(!enable);
@@ -233,10 +241,13 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
                 // Habilita o deshabilita el hotspot
                 setWifiApEnabledMethod.invoke(wifiManager, null, enable);
+
+                Log.d("TAG", "VERSION ANDROID 8...");
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
         } else {
+            Log.d("TAG", "VERSION ANDROID 8...");
             // Para Android 8.0 y versiones posteriores, se requiere un método diferente
             ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             try {
@@ -247,15 +258,29 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                 Method startTetheringMethod = iConnectivityManager.getClass().getMethod("startTethering", int.class, ResultReceiver.class, boolean.class);
 
                 if (enable) {
+                    Log.d("TAG", "ACTIVADO HOTSPOT 1");
+                    // Desactiva el Wi-Fi antes de habilitar el hotspot
+                    wifiManager.setWifiEnabled(false);
                     // Habilita el hotspot
                     startTetheringMethod.invoke(iConnectivityManager, ConnectivityManager.TYPE_MOBILE, null, true);
+                    //Toast.makeText(this, "ACTIVANDO HOTSPOT", Toast.LENGTH_LONG).show();
+                    Log.d("TAG", "ACTIVADO HOTSPOT 2");
+
                 } else {
+                    Log.d("TAG", "ACTIVADO WIFI 1");
                     // Deshabilita el hotspot
                     Method stopTetheringMethod = iConnectivityManager.getClass().getMethod("stopTethering", int.class);
                     stopTetheringMethod.invoke(iConnectivityManager, ConnectivityManager.TYPE_MOBILE);
+                    Thread.sleep(15000);
+                    wifiManager.setWifiEnabled(true);
+                    Log.d("TAG", "ACTIVADO WIFI 2");
+                    // Activa el Wi-Fi después de deshabilitar el hotspot
+                    //Toast.makeText(this, "ACTIVADO WIFI", Toast.LENGTH_LONG).show();
+                    Log.d("TAG", "ACTIVADO WIFI 3");
                 }
-            } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException | InterruptedException e) {
                 e.printStackTrace();
+                Log.d("TAG", "ERROR WIFI - HOTSPOT");
             }
         }
     }
@@ -389,7 +414,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
 
             if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString())){
-                Log.d("TAG", "Message: " + msg_cellphone);
+                //Log.d("TAG", "Message: " + msg_cellphone);
                 try {
                     msg_cellphone.put("timestamp_sys", System.currentTimeMillis());
                 } catch (JSONException e) {
@@ -484,18 +509,20 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                         LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
                 Log.d("TAG", "Real Time: " + REAL_TIME_OPERATION);
                 if (!REAL_TIME_OPERATION) {
-                    enableHotspot(false);
                     try {
+                        ScheduleOffLine.sendTcpMessage(ScheduleOffLine.RELE2_ON);
+                        ScheduleOffLine.sendTcpMessage(ScheduleOffLine.RELE1_ON);
+                        enableHotspot(false);
                         Future<Boolean> sendDataFuture = ScheduleOffLine.sendDataOfflineById(buffer);
                         while (!sendDataFuture.isDone() && !REAL_TIME_OPERATION) {
                             REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(locationModel.getLatitude(), locationModel.getLongitude(),
                                     LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
+                            Log.d("TAG", "=========== DENTRO WHILE ========");
                             Thread.sleep(60000);
                         }
                         Log.d("TAG", "=========== OUT WHILE ========");
-                        REAL_TIME_OPERATION = true;
                         enableHotspot(true);
-                        //schedulerOffline.cancel(false);
+                        REAL_TIME_OPERATION = true;
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

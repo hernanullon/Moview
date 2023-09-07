@@ -3,6 +3,7 @@ package com.unicamp.moview_v1;
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -17,7 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class JSONDatabaseHelper extends SQLiteOpenHelper {
-
     private static final int DATABASE_VERSION = 1;
     private static final String DATABASE_NAME = "json_db";
     private static final String TABLE_NAME = "json_table";
@@ -32,6 +32,20 @@ public class JSONDatabaseHelper extends SQLiteOpenHelper {
 
     public JSONDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+//        SharedPreferences prefs = context.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
+//        boolean alreadyCleaned = prefs.getBoolean("already_cleaned", false);
+//
+//        if (!alreadyCleaned) {
+//            SQLiteDatabase db = getWritableDatabase();
+//            db.execSQL("DELETE FROM " + TABLE_NAME);
+//            // Si necesitas reiniciar el AUTOINCREMENT, también puedes hacerlo
+//            db.execSQL("DELETE FROM SQLITE_SEQUENCE WHERE NAME = '" + TABLE_NAME + "'");
+//            db.close();
+//
+//            SharedPreferences.Editor editor = prefs.edit();
+//            editor.putBoolean("already_cleaned", true);
+//            editor.apply();
+//        }
     }
 
     @Override

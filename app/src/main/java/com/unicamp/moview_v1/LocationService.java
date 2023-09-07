@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -27,12 +28,16 @@ public class LocationService extends Service implements LocationListener {
     private static final String ACTION_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_LOCATION";
     private static final String MESSAGE_KEY = "update_location";
     private LocationManager locationManager;
+    private SharedPreferences sharedPreferences;
+    private static int LOCATION_RATE_UPDATE;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        createNotificationChannel();
+        sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
+        LOCATION_RATE_UPDATE = sharedPreferences.getInt("LocationRate",1000);
 
+        createNotificationChannel();
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this,0, notificationIntent, 0);
 
@@ -64,7 +69,8 @@ public class LocationService extends Service implements LocationListener {
     public void startLocationUpdates() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_RATE_UPDATE, 0, this);
         } else {
             // Manejar el caso en el que no se conceda el permiso
         }

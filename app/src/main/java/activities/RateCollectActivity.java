@@ -17,7 +17,7 @@ import com.unicamp.moview_v1.MainActivity;
 import com.unicamp.moview_v1.R;
 
 public class RateCollectActivity extends AppCompatActivity {
-    private EditText editTextInertialOFF, editTextLocationOFF, editTextCANOFF, editTextClimaticOFF;
+    private EditText editTextLocationOFF, editTextCANOFF, editTextClimaticOFF;
     private SwitchCompat swInertialRT, swLocationRT, swCANRT, swClimaticRT;
     private Spinner spInertialOFF, spLocationOFF, spCANOFF, spClimaticOFF;
     private SharedPreferences sharedPreferences;
@@ -27,7 +27,6 @@ public class RateCollectActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.rate_collection);
 
-        editTextInertialOFF = findViewById(R.id.editText_inertial_OFF);
         editTextLocationOFF = findViewById(R.id.editText_Location_OFF);
         editTextCANOFF = findViewById(R.id.editText_Can_OFF);
         editTextClimaticOFF = findViewById(R.id.editText_Climatic_OFF);
@@ -48,7 +47,14 @@ public class RateCollectActivity extends AppCompatActivity {
                 R.array.time_options, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        int[] spinnerIds = {R.id.spinnerInertial_RT, R.id.spinnerLocation_RT,R.id.spinnerCAN_RT, R.id.spinnerClimatic_RT};
+        ArrayAdapter<CharSequence> adapter_inertial = ArrayAdapter.createFromResource(this,
+                R.array.inertial_options_rate, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        Spinner spinnerIT = findViewById(R.id.spinnerInertial_RT);
+        spinnerIT.setAdapter(adapter_inertial);
+
+        int[] spinnerIds = {R.id.spinnerLocation_RT,R.id.spinnerCAN_RT, R.id.spinnerClimatic_RT};
         for (int spinnerId : spinnerIds) {
             Spinner spinner = findViewById(spinnerId);
             spinner.setAdapter(adapter);
@@ -85,7 +91,8 @@ public class RateCollectActivity extends AppCompatActivity {
     private void saveValues() {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try {
-            editor.putInt("InertialRate", convert_rate(spInertialOFF,editTextInertialOFF));
+            Log.d("TAG", String.valueOf(spInertialOFF.getSelectedItemPosition()));
+            editor.putInt("InertialRate", spInertialOFF.getSelectedItemPosition());
             editor.putInt("LocationRate", convert_rate(spLocationOFF,editTextLocationOFF));
             editor.putInt("CANRate", convert_rate(spCANOFF,editTextCANOFF));
             editor.putInt("ClimaticRate", convert_rate(spClimaticOFF,editTextClimaticOFF));

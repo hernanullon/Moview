@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -16,6 +17,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Parcelable;
+import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -25,12 +27,16 @@ public class SensorsService extends Service implements SensorEventListener {
     private static final String INERTIAL_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_INERTIAL_SENSORS";
     private static final String INERTIAL_KEY_VALUES = "update_inertial_sensors", INERTIAL_KEY_TYPE = "type_inertial_sensors";
     private SensorManager sensorManager;
-
+    private SharedPreferences sharedPreferences;
+    private static int INERTIAL_RATE_UPDATE;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         createNotificationChannel();
+
+        sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
+        INERTIAL_RATE_UPDATE = inertial_rate_select(sharedPreferences.getInt("InertialRate",2));
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
@@ -47,6 +53,18 @@ public class SensorsService extends Service implements SensorEventListener {
         return START_NOT_STICKY;
     }
 
+    public int inertial_rate_select(int pos){
+        switch (pos){
+            case 0:
+                return SensorManager.SENSOR_DELAY_GAME;
+            case 1:
+                return SensorManager.SENSOR_DELAY_UI;
+            case 2:
+                return SensorManager.SENSOR_DELAY_NORMAL;
+        }
+        return SensorManager.SENSOR_DELAY_NORMAL;
+    }
+
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(
@@ -60,9 +78,9 @@ public class SensorsService extends Service implements SensorEventListener {
     }
 
     public void start() {
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),INERTIAL_RATE_UPDATE);
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), INERTIAL_RATE_UPDATE);
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), INERTIAL_RATE_UPDATE);
     }
 
     public void stop() {

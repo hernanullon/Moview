@@ -38,7 +38,7 @@ public class ConfigureParametersActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings);
 
-        sharedPreferences = getSharedPreferences("Config_Variables", MODE_PRIVATE);
+        sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
         int[] checkBoxIds = {
                 R.id.checkBoxSunday,
                 R.id.checkBoxMonday,
@@ -89,8 +89,12 @@ public class ConfigureParametersActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.putString("timeInit", editTextTimeInit.getText().toString());
-                editor.putString("timeFinish", editTextTimeFinish.getText().toString());
+                if (!editTextTimeInit.getText().toString().isEmpty()){
+                    editor.putString("timeInit", editTextTimeInit.getText().toString());
+                }
+                if (!editTextTimeFinish.getText().toString().isEmpty()){
+                    editor.putString("timeFinish", editTextTimeFinish.getText().toString());
+                }
                 editor.putStringSet("selectedDates", new HashSet<>(selectedDates));
                 editor.putStringSet("selectedDays", selectedCheckBoxes);
                 editor.apply();

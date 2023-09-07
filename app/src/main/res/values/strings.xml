@@ -44,6 +44,11 @@
         <item>min</item>
     </string-array>
 
+    <string-array name="inertial_options_rate">
+        <item>20 ms</item>
+        <item>66 ms</item>
+        <item>200 ms</item>
+    </string-array>
 
 
     <string name="app_name">Moview_v1</string>
