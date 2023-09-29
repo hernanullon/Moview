@@ -86,11 +86,11 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     //public static float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
     //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
 
-    public static LocalTime FINAL_TIME_WORK = LocalTime.of(23, 0, 0);
-    public static LocalTime INITIAL_TIME_WORK = LocalTime.of(7, 0, 0);
+    public static LocalTime FINAL_TIME_WORK = LocalTime.of(4, 45, 0);
+    public static LocalTime INITIAL_TIME_WORK = LocalTime.of(6, 45, 0);
 
     public static boolean REAL_TIME_OPERATION = true;
-    public static String DEVICE_ID = "B-Test";
+    public static String DEVICE_ID = "B1";
     public static boolean START_MONITORING = false;
 
     public static int BATTERY_MAX, BATTERY_MIN, TEMP_MAX, TEMP_MIN;
