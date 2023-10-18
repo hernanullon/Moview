@@ -100,11 +100,17 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     private SharedPreferences sharedPreferences;
 
+    private TextView canTextView;
+    private TextView climaticTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        canTextView = this.findViewById(R.id.can_text_view);
+        climaticTextView = this.findViewById(R.id.climatic_text_view);
+
 
         sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
 
@@ -317,9 +323,15 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                 addJSON(result, json4);
             }
 
+            if(ClimaticModel.getMessage() != null) {
+                JSONObject json5 = ClimaticModel.toJSON();
+                addJSON(result, json5);
+            }
+
             result.put("type", "realtime");
             result.put("device_id", DEVICE_ID);
             return result;
+
         } catch (JSONException e) {
             e.printStackTrace();
             Log.d("TAG", "FAIL Creating JSON..." + e);
@@ -380,7 +392,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //Log.d("TAG", "Location Service ON");
             Location location = (Location) intent.getParcelableExtra("update_location");
             locationModel.setTimestamp(location.getTime());
             locationModel.setLatitude(location.getLatitude());
@@ -410,11 +421,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             cellphoneDataModel.setTemperature(temperature);
             cellphoneDataModel.setSignalStrength(signalLevel);
             cellphoneDataModel.setNetwork_type(networkType);
-
             JSONObject msg_cellphone = cellphoneDataModel.toJSON();
 
             if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString())){
-                //Log.d("TAG", "Message: " + msg_cellphone);
                 try {
                     msg_cellphone.put("timestamp_sys", System.currentTimeMillis());
                 } catch (JSONException e) {
@@ -434,11 +443,17 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private BroadcastReceiver externalReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //Log.d("TAG", "External Service ON");
             String message_external = intent.getStringExtra("update_external_sensors");
-            //Log.d("TAG", "Message: " + message_external);
             if (message_external != null) {
-                CANModel.setMessage(message_external);
+                Log.d("TAG", message_external);
+                if(message_external.indexOf("climatic") != -1) {
+                    ClimaticModel.setMessage(message_external);
+                    climaticTextView.setText("MSG: " + message_external);
+                }
+                if(message_external.indexOf("CAN") != -1) {
+                    CANModel.setMessage(message_external);
+                    canTextView.setText("MSG: " + message_external);
+                }
                 if(REAL_TIME_OPERATION)
                     buffer.insertJson(message_external);
             }

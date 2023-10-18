@@ -15,7 +15,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.123"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/magnetometer_text_view2" />
+        app:layout_constraintTop_toBottomOf="@+id/climatic_text_view" />
 
     <TextView
         android:id="@+id/cellphone_text_view"
@@ -40,7 +40,7 @@
         app:layout_constraintTop_toBottomOf="@+id/can_text_view" />
 
     <TextView
-        android:id="@+id/magnetometer_text_view2"
+        android:id="@+id/climatic_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
