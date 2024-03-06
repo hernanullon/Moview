@@ -33,6 +33,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -69,7 +70,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private ExternalDataModel CANModel;
     private ExternalDataModel ClimaticModel;
 
-
     private JSONDatabaseHelper buffer;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private boolean updAcc = false, updGyr = false, updMag = false;
@@ -90,13 +90,15 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     public static LocalTime INITIAL_TIME_WORK = LocalTime.of(6, 45, 0);
 
     public static boolean REAL_TIME_OPERATION = true;
-    public static String DEVICE_ID = "B1";
+    public static String DEVICE_ID = "MMS-002";
     public static boolean START_MONITORING = false;
 
     public static int BATTERY_MAX, BATTERY_MIN, TEMP_MAX, TEMP_MIN;
     public static int LEVEL_BATTERY = -1;
     public static int TEMPERATURE_BATTERY = -1;
-    public static String IP_ADDRESS_RELE = "192.168.43.93";
+    public static String IP_ADDRESS_RELE = "192.168.43.227";
+
+    public JSONObject jsonCAN = new JSONObject();
 
     private SharedPreferences sharedPreferences;
 
@@ -114,8 +116,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
         sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
 
-        String defaultTimeInit = "07:00";
-        String defaultTimeFinish = "23:00";
+        String defaultTimeInit = "04:45";
+        String defaultTimeFinish = "06:45";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
         String timeInit = sharedPreferences.getString("timeInit", defaultTimeInit);
         String timeFinish = sharedPreferences.getString("timeFinish", defaultTimeFinish);
@@ -159,6 +161,15 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
         cellphoneDataModel = new CellphoneDataModel(-999,-999,-999, -999,"None");
         cellphoneDataView = new CellphoneDataView(this);
+
+        try {
+            jsonCAN.put("type", "CAN");
+            jsonCAN.put("FC08", "");
+            jsonCAN.put("F33A", "");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
 
         CANModel = new ExternalDataModel(null);
         ClimaticModel = new ExternalDataModel(null);
@@ -445,17 +456,39 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         public void onReceive(Context context, Intent intent) {
             String message_external = intent.getStringExtra("update_external_sensors");
             if (message_external != null) {
-                Log.d("TAG", message_external);
                 if(message_external.indexOf("climatic") != -1) {
+                    Log.d("TAG", message_external);
                     ClimaticModel.setMessage(message_external);
                     climaticTextView.setText("MSG: " + message_external);
+                    if(REAL_TIME_OPERATION)
+                        buffer.insertJson(ClimaticModel.toJSON().toString());
                 }
                 if(message_external.indexOf("CAN") != -1) {
-                    CANModel.setMessage(message_external);
-                    canTextView.setText("MSG: " + message_external);
+                    //canTextView.setText("MSG: " + message_external);
+                    try {
+                        JSONObject jsonObject = new JSONObject(message_external);
+                        JSONArray packetsArray = jsonObject.getJSONArray("packets");
+                        if(REAL_TIME_OPERATION) {
+                            for (int i = 0; i < packetsArray.length(); i++) {
+                                JSONObject packet = packetsArray.getJSONObject(i);
+                                packet.put("type", "CAN");
+                                packet.put("timestamp_sys_can", System.currentTimeMillis());
+                                packet.put("device_id", MainActivity.DEVICE_ID);
+                                buffer.insertJson(packet.toString());
+                                //Log.d("TAG", packet.toString());
+                                String pgn = packet.getString("PGN");
+                                if ("FC08".equals(pgn) || "F33A".equals(pgn)) {
+                                    jsonCAN.put(pgn, packet.getString("data_pgn"));
+                                    CANModel.setMessage(jsonCAN.toString());
+                                }
+                            }
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
                 }
-                if(REAL_TIME_OPERATION)
-                    buffer.insertJson(message_external);
+
             }
         }
     };
