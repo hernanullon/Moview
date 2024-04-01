@@ -1,11 +1,10 @@
-package com.unicamp.moview_v1;
+package activities;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -17,12 +16,12 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.unicamp.moview_v1.R;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Set;
-
-import activities.EnergyTempActivity;
 
 public class ConfigureParametersActivity extends AppCompatActivity {
 

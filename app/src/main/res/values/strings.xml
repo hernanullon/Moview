@@ -50,18 +50,14 @@
         <item>200 ms</item>
     </string-array>
 
-
-    <string name="app_name">Moview_v1</string>
-    <string name="btnStart">Start</string>
-    <string name="btnStop">Stop</string>
+    <string name="app_name">Mobile Multi-Sensor System</string>
+    <string name="btnStart">Inspect</string>
     <string name="sensors">Inertial Sensors:</string>
     <string name="sensorsValue" />
-    <string name="gps">GPS Data:</string>
+    <string name="gps">Location Data:</string>
     <string name="gpsValue" />
-    <string name="can">CAN Data:</string>
-    <string name="canValue" />
-    <string name="climatic">Climatic Data:</string>
-    <string name="climaticValue" />
+    <string name="external">External Data:</string>
+    <string name="externalValue" />
     <string name="cellphone">Cellphone Data:</string>
     <string name="cellphoneValue" />
     <string name="accel">Accelerometer:</string>
@@ -77,8 +73,7 @@
     <string name="title_realtime">Real Time Collect</string>
     <string name="scText_Sensors">Inertial Data</string>
     <string name="scText_GPS">GPS Data</string>
-    <string name="scText_CAN">CAN Data</string>
-    <string name="scText_Climatic">Climatic Data</string>
+    <string name="scText_Climatic">External Data</string>
 
     <string name="channel_name1">GPS Service</string>
     <string name="channel_description1">Foreground service for GPS tracking</string>

@@ -15,6 +15,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.location.Location;
 import android.net.ConnectivityManager;
@@ -41,15 +42,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import java.time.Instant;
 import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -58,23 +56,22 @@ import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity implements ServiceCallbacks {
-    private SensorDataModel sensorDataModel;
-    private SensorDataView sensorDataView;
+    private InertialModel inertialModel;
+    private InertialView inertialView;
 
     private LocationModel locationModel;
     private LocationView locationView;
 
-    private CellphoneDataModel cellphoneDataModel;
-    private CellphoneDataView cellphoneDataView;
+    private CellphoneModel cellphoneModel;
+    private CellphoneView cellphoneView;
 
-    private ExternalDataModel CANModel;
-    private ExternalDataModel ClimaticModel;
+    private ExternalModel externalModel;
+    private ExternalView externalView;
 
     private JSONDatabaseHelper buffer;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private boolean updAcc = false, updGyr = false, updMag = false;
     private Button btnStart;
-
 
     private MqttService mqttService;
     private boolean bound = false;
@@ -82,97 +79,45 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private ScheduledFuture<?> schedulerOffline;
 
-    public static float LATITUDE_FINAL, LONGITUDE_FINAL;
-    //public static float LATITUDE_FINAL = (float) -22.816113211714086, LONGITUDE_FINAL = (float) -47.07272459491293;
-    //public static final float LATITUDE_FINAL = (float) -22.8214150, LONGITUDE_FINAL = (float) -47.0663900;
-
-    public static LocalTime FINAL_TIME_WORK = LocalTime.of(4, 45, 0);
-    public static LocalTime INITIAL_TIME_WORK = LocalTime.of(6, 45, 0);
-
     public static boolean REAL_TIME_OPERATION = true;
-    public static String DEVICE_ID = "MMS-002";
     public static boolean START_MONITORING = false;
-
+    public static String DEVICE_ID;
+    public static float LATITUDE_FINAL, LONGITUDE_FINAL;
+    public static LocalTime FINAL_TIME_WORK, INITIAL_TIME_WORK;
     public static int BATTERY_MAX, BATTERY_MIN, TEMP_MAX, TEMP_MIN;
     public static int LEVEL_BATTERY = -1;
     public static int TEMPERATURE_BATTERY = -1;
-    public static String IP_ADDRESS_RELE = "192.168.43.227";
+    public static String IP_DRIVER;
 
-    public JSONObject jsonCAN = new JSONObject();
-
-    private SharedPreferences sharedPreferences;
-
-    private TextView canTextView;
-    private TextView climaticTextView;
+    public static SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        canTextView = this.findViewById(R.id.can_text_view);
-        climaticTextView = this.findViewById(R.id.climatic_text_view);
-
-
         sharedPreferences = getSharedPreferences("Config", MODE_PRIVATE);
+        loadSharedPreferences();
+        saveSharedPreferences();
 
-        String defaultTimeInit = "04:45";
-        String defaultTimeFinish = "06:45";
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-        String timeInit = sharedPreferences.getString("timeInit", defaultTimeInit);
-        String timeFinish = sharedPreferences.getString("timeFinish", defaultTimeFinish);
-
-        timeInit = (timeInit != null && !timeInit.isEmpty()) ? timeInit : defaultTimeInit;
-        timeFinish = (timeFinish != null && !timeFinish.isEmpty()) ? timeFinish : defaultTimeFinish;
-
-        INITIAL_TIME_WORK = LocalTime.parse(timeInit, formatter);
-        FINAL_TIME_WORK = LocalTime.parse(timeFinish, formatter);
-
-        Log.d("TAG", "Tempo: " + INITIAL_TIME_WORK +" - "+ FINAL_TIME_WORK );
-
-        Set<String> selectedDates = sharedPreferences.getStringSet("selectedDates", new HashSet<>());
-        Set<String> selectedDays = sharedPreferences.getStringSet("selectedDays", new HashSet<>());
-
-        TEMP_MIN = sharedPreferences.getInt("temperatureMin",15);
-        TEMP_MAX = sharedPreferences.getInt("temperatureMax",25);
-        BATTERY_MIN = sharedPreferences.getInt("batteryMin",45);
-        BATTERY_MAX = sharedPreferences.getInt("batteryMax",90);
-
-        // TEST ONIBUS ELETRICO
-        //LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.816113211714086);
-        //LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.07272459491293);
-
-        // TEST LABORATORIO
-        LATITUDE_FINAL = sharedPreferences.getFloat("latitude", (float) -22.82149447593838);
-        LONGITUDE_FINAL = sharedPreferences.getFloat("longitude", (float) -47.0664276368916);
-
-        sharedPreferences.getInt("InertialRate",2);
-
-
-        Log.d("TAG", "Dados: " + TEMP_MIN +" "+ TEMP_MAX +" "+ BATTERY_MIN +" "+ BATTERY_MAX);
+        TextView txt_view = this.findViewById(R.id.textview_device_id);
+        txt_view.setText(DEVICE_ID);
 
         btnStart = this.findViewById(R.id.btn_start);
+        btnStart.setEnabled(false);
+        btnStart.setBackgroundColor(Color.GRAY);
 
-        sensorDataModel = new SensorDataModel();
-        sensorDataView = new SensorDataView(this);
+        inertialModel = new InertialModel();
+        inertialView = new InertialView(this);
 
         locationModel = new LocationModel();
         locationView = new LocationView(this);
 
-        cellphoneDataModel = new CellphoneDataModel(-999,-999,-999, -999,"None");
-        cellphoneDataView = new CellphoneDataView(this);
+        cellphoneModel = new CellphoneModel();
+        cellphoneView = new CellphoneView(this);
 
-        try {
-            jsonCAN.put("type", "CAN");
-            jsonCAN.put("FC08", "");
-            jsonCAN.put("F33A", "");
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-
-        CANModel = new ExternalDataModel(null);
-        ClimaticModel = new ExternalDataModel(null);
+        externalModel = new ExternalModel();
+        externalView = new ExternalView(this);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction("com.unicamp.moview_v1.SEND_LOCATION");
@@ -200,18 +145,61 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         else
             Log.d("TAG", "No tiene el permiso...");
 
+        enableHotspot(true);
+        START_MONITORING = true;
+        startMonitoring();
+        startServer();
+        SchedulerOfflineDetect();
+
+        btnStart.setEnabled(true);
+        btnStart.setBackgroundColor(Color.BLUE);
 
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                START_MONITORING = true;
-                StartMonitoring();
-                enableHotspot(true);
-                Log.d("TAG", "Hotspot ACTIVADO...");
-                startServer();
-                SchedulerOfflineDetect();
+                updateViews();
             }
         });
+    }
+
+    private void loadSharedPreferences(){
+        Log.d("TAG", "UPDATE CONFIGURATIONS");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        Map<String, ?> allEntries = sharedPreferences.getAll();
+        for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+            Log.d("TAG", entry.getKey() + ": " + entry.getValue().toString());
+        }
+        INITIAL_TIME_WORK = LocalTime.parse(sharedPreferences.getString("INITIAL_TIME_WORK", "04:45"), formatter);
+        FINAL_TIME_WORK = LocalTime.parse(sharedPreferences.getString("FINAL_TIME_WORK", "06:45"), formatter);
+        DEVICE_ID = sharedPreferences.getString("DEVICE_ID", "MMSTEST");
+        IP_DRIVER = sharedPreferences.getString("IP_DRIVER", "192.168.1.1");
+        TEMP_MIN = sharedPreferences.getInt("TEMP_MIN",15);
+        TEMP_MAX = sharedPreferences.getInt("TEMP_MAX",25);
+        BATTERY_MIN = sharedPreferences.getInt("BATTERY_MIN",40);
+        BATTERY_MAX = sharedPreferences.getInt("BATTERY_MAX",90);
+    }
+
+    private void saveSharedPreferences(){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        String initialTimeFormatted = INITIAL_TIME_WORK.format(formatter);
+        String finalTimeFormatted = FINAL_TIME_WORK.format(formatter);
+        editor.putString("INITIAL_TIME_WORK", initialTimeFormatted);
+        editor.putString("FINAL_TIME_WORK", finalTimeFormatted);
+        editor.putString("DEVICE_ID", DEVICE_ID);
+        editor.putString("IP_DRIVER", IP_DRIVER);
+        editor.putInt("TEMP_MIN", TEMP_MIN);
+        editor.putInt("TEMP_MAX", TEMP_MAX);
+        editor.putInt("BATTERY_MIN", BATTERY_MIN);
+        editor.putInt("BATTERY_MAX", BATTERY_MAX);
+        editor.commit();
+    }
+
+    private void updateViews(){
+        locationView.update(locationModel.toString());
+        cellphoneView.update(cellphoneModel.toString());
+        externalView.update(externalModel.toString());
+        inertialView.update(inertialModel.toString());
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -252,13 +240,10 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             try {
                 // Desactiva el Wi-Fi antes de habilitar el hotspot
                 wifiManager.setWifiEnabled(!enable);
-
                 // Accede al método 'setWifiApEnabled()' usando reflexión
                 Method setWifiApEnabledMethod = wifiManager.getClass().getMethod("setWifiApEnabled", WifiConfiguration.class, boolean.class);
-
                 // Habilita o deshabilita el hotspot
                 setWifiApEnabledMethod.invoke(wifiManager, null, enable);
-
                 Log.d("TAG", "VERSION ANDROID 8...");
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
@@ -275,25 +260,13 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                 Method startTetheringMethod = iConnectivityManager.getClass().getMethod("startTethering", int.class, ResultReceiver.class, boolean.class);
 
                 if (enable) {
-                    Log.d("TAG", "ACTIVADO HOTSPOT 1");
-                    // Desactiva el Wi-Fi antes de habilitar el hotspot
                     wifiManager.setWifiEnabled(false);
-                    // Habilita el hotspot
                     startTetheringMethod.invoke(iConnectivityManager, ConnectivityManager.TYPE_MOBILE, null, true);
-                    //Toast.makeText(this, "ACTIVANDO HOTSPOT", Toast.LENGTH_LONG).show();
-                    Log.d("TAG", "ACTIVADO HOTSPOT 2");
-
                 } else {
-                    Log.d("TAG", "ACTIVADO WIFI 1");
-                    // Deshabilita el hotspot
                     Method stopTetheringMethod = iConnectivityManager.getClass().getMethod("stopTethering", int.class);
                     stopTetheringMethod.invoke(iConnectivityManager, ConnectivityManager.TYPE_MOBILE);
                     Thread.sleep(15000);
                     wifiManager.setWifiEnabled(true);
-                    Log.d("TAG", "ACTIVADO WIFI 2");
-                    // Activa el Wi-Fi después de deshabilitar el hotspot
-                    //Toast.makeText(this, "ACTIVADO WIFI", Toast.LENGTH_LONG).show();
-                    Log.d("TAG", "ACTIVADO WIFI 3");
                 }
             } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException | InterruptedException e) {
                 e.printStackTrace();
@@ -319,38 +292,38 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     private JSONObject concatJSON() {
         try {
-            JSONObject result = new JSONObject();
-            JSONObject json1 = locationModel.toJSON();
-            addJSON(result,  json1);
+            JSONObject json = new JSONObject();
+            json.put("type", "realtime");
+            json.put("device_id", DEVICE_ID);
+            JSONObject smartphone = new JSONObject();
+            addJSON(smartphone,  locationModel.toJSON());
+            addJSON(smartphone,  inertialModel.toJSON());
+            addJSON(smartphone,  cellphoneModel.toJSON());
+            smartphone.remove("device_id");
+            long timestamp_sys = (long) smartphone.remove("timestamp_sys");
+            smartphone.remove("type");
+            json.put("timestamp_sys", timestamp_sys);
+            json.put("smartphone", smartphone);
 
-            JSONObject json2 = sensorDataModel.toJSON();
-            addJSON(result,  json2);
-
-            JSONObject json3 = cellphoneDataModel.toJSON();
-            addJSON(result,  json3);
-
-            if(CANModel.getMessage() != null) {
-                JSONObject json4 = CANModel.toJSON();
-                addJSON(result, json4);
+            for (Map.Entry<String, String> entry : externalModel.getAllDeviceMessages().entrySet()) {
+                String type = entry.getKey();
+                String message = entry.getValue();
+                JSONObject messageJson = new JSONObject(message);
+                messageJson.remove("type");
+                messageJson.remove("device_id");
+                json.put(type, messageJson);
             }
-
-            if(ClimaticModel.getMessage() != null) {
-                JSONObject json5 = ClimaticModel.toJSON();
-                addJSON(result, json5);
-            }
-
-            result.put("type", "realtime");
-            result.put("device_id", DEVICE_ID);
-            return result;
+            externalModel.clearAllDeviceMessages();
+            return json;
 
         } catch (JSONException e) {
             e.printStackTrace();
-            Log.d("TAG", "FAIL Creating JSON..." + e);
+            Log.d("TAG", "FAIL PARSE JSON" + e);
         }
         return null;
     }
 
-    private void StartMonitoring() {
+    private void startMonitoring() {
         requestLocationPermissions();
     }
 
@@ -375,7 +348,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         Intent serviceIntent1 = new Intent(this, LocationService.class);
         ContextCompat.startForegroundService(this, serviceIntent1);
 
-        Intent serviceIntent2 = new Intent(this, SensorsService.class);
+        Intent serviceIntent2 = new Intent(this, InertialService.class);
         ContextCompat.startForegroundService(this, serviceIntent2);
 
         Intent serviceIntent3 = new Intent(this, CellphoneService.class);
@@ -389,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         Intent serviceIntent1 = new Intent(this, LocationService.class);
         stopService(serviceIntent1);
 
-        Intent serviceIntent2 = new Intent(this, SensorsService.class);
+        Intent serviceIntent2 = new Intent(this, InertialService.class);
         stopService(serviceIntent2);
 
         Intent serviceIntent3 = new Intent(this, CellphoneService.class);
@@ -398,7 +371,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
         Intent serviceIntent4 = new Intent(this, MqttService.class);
         stopService(serviceIntent4);
     }
-
 
     private BroadcastReceiver locationReceiver = new BroadcastReceiver() {
         @Override
@@ -409,86 +381,62 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
             locationModel.setLongitude(location.getLongitude());
             locationModel.setSpeed(location.getSpeed());
             locationModel.setAltitude(location.getAltitude());
-            JSONObject msg_gps = locationModel.toJSON();
+            locationModel.setAccuracy(location.getAccuracy());
             if(REAL_TIME_OPERATION)
-                buffer.insertJson(msg_gps.toString());
-            locationView.update(msg_gps);
+                buffer.insertJson(locationModel.toJSON().toString());
         }
     };
 
     private BroadcastReceiver cellphoneReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            int battery = intent.getIntExtra("battery_cellphone", cellphoneDataModel.getBattery());
-            int temperature = intent.getIntExtra("temperature_cellphone", cellphoneDataModel.getTemperature());
-            int signalLevel = intent.getIntExtra("signal_cellphone", cellphoneDataModel.getSignalStrength());
+            int battery = intent.getIntExtra("battery_cellphone", cellphoneModel.getBattery());
+            int temperature = intent.getIntExtra("temperature_cellphone", cellphoneModel.getTemperature());
+            int signalLevel = intent.getIntExtra("signal_cellphone", cellphoneModel.getSignalStrength());
+            int hotspot_enable = intent.getIntExtra("hotspot_cellphone", cellphoneModel.getWifi_status());
             String networkType = intent.getStringExtra("network_cellphone");
             if(networkType == null)
-                networkType = cellphoneDataModel.getNetwork_type();
+                networkType = cellphoneModel.getNetwork_type();
 
-            JSONObject actual_msg_cellphone = cellphoneDataModel.toJSON();
+            JSONObject last_msg_cellphone = cellphoneModel.toJSON();
+            cellphoneModel.setBattery(battery);
+            cellphoneModel.setTemperature(temperature);
+            cellphoneModel.setSignalStrength(signalLevel);
+            cellphoneModel.setNetwork_type(networkType);
+            cellphoneModel.setWifi_status(hotspot_enable);
+            JSONObject actual_msg_cellphone = cellphoneModel.toJSON();
 
-            cellphoneDataModel.setBattery(battery);
-            cellphoneDataModel.setTemperature(temperature);
-            cellphoneDataModel.setSignalStrength(signalLevel);
-            cellphoneDataModel.setNetwork_type(networkType);
-            JSONObject msg_cellphone = cellphoneDataModel.toJSON();
-
-            if(!msg_cellphone.toString().equals(actual_msg_cellphone.toString())){
+            if(!last_msg_cellphone.toString().equals(actual_msg_cellphone.toString())){
                 try {
-                    msg_cellphone.put("timestamp_sys", System.currentTimeMillis());
+                    actual_msg_cellphone.put("timestamp_sys", System.currentTimeMillis());
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
                 LEVEL_BATTERY = battery;
                 TEMPERATURE_BATTERY = temperature;
                 if(REAL_TIME_OPERATION)
-                    buffer.insertJson(msg_cellphone.toString());
-                cellphoneDataView.update(msg_cellphone);
+                    buffer.insertJson(actual_msg_cellphone.toString());
             }
-
-
         }
     };
 
     private BroadcastReceiver externalReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            String message_external = intent.getStringExtra("update_external_sensors");
-            if (message_external != null) {
-                if(message_external.indexOf("climatic") != -1) {
-                    Log.d("TAG", message_external);
-                    ClimaticModel.setMessage(message_external);
-                    climaticTextView.setText("MSG: " + message_external);
+            String jsonString_external = intent.getStringExtra("update_external_sensors");
+            if (jsonString_external != null) {
+                try {
+                    JSONObject jsonObject = new JSONObject(jsonString_external);
+                    String type = jsonObject.getString("type");
+                    externalModel.updateDeviceMessage(type, jsonString_external);
+                    jsonObject.put("timestamp_sys", System.currentTimeMillis());
+                    jsonObject.put("device_id", MainActivity.DEVICE_ID);
                     if(REAL_TIME_OPERATION)
-                        buffer.insertJson(ClimaticModel.toJSON().toString());
+                        buffer.insertJson(jsonObject.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Log.e("TAG", "Error parsing JSON from external sensors", e);
                 }
-                if(message_external.indexOf("CAN") != -1) {
-                    //canTextView.setText("MSG: " + message_external);
-                    try {
-                        JSONObject jsonObject = new JSONObject(message_external);
-                        JSONArray packetsArray = jsonObject.getJSONArray("packets");
-                        if(REAL_TIME_OPERATION) {
-                            for (int i = 0; i < packetsArray.length(); i++) {
-                                JSONObject packet = packetsArray.getJSONObject(i);
-                                packet.put("type", "CAN");
-                                packet.put("timestamp_sys_can", System.currentTimeMillis());
-                                packet.put("device_id", MainActivity.DEVICE_ID);
-                                buffer.insertJson(packet.toString());
-                                //Log.d("TAG", packet.toString());
-                                String pgn = packet.getString("PGN");
-                                if ("FC08".equals(pgn) || "F33A".equals(pgn)) {
-                                    jsonCAN.put(pgn, packet.getString("data_pgn"));
-                                    CANModel.setMessage(jsonCAN.toString());
-                                }
-                            }
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-
             }
         }
     };
@@ -496,33 +444,29 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
     private BroadcastReceiver inertialReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            //Log.d("TAG", "Inertial Service ON");
             float[] values = intent.getFloatArrayExtra("update_inertial_sensors");
             int type = intent.getIntExtra("type_inertial_sensors", 0);
             switch (type) {
                 case Sensor.TYPE_ACCELEROMETER:
-                    sensorDataModel.setAccelerometerValues(values);
+                    inertialModel.setAccelerometerValues(values);
                     updAcc = true;
                     break;
                 case Sensor.TYPE_GYROSCOPE:
-                    sensorDataModel.setGyroscopeValues(values);
+                    inertialModel.setGyroscopeValues(values);
                     updGyr = true;
                     break;
                 case Sensor.TYPE_MAGNETIC_FIELD:
-                    sensorDataModel.setMagnetometerValues(values);
+                    inertialModel.setMagnetometerValues(values);
                     updMag = true;
                     break;
             }
             if(updAcc && updGyr && updMag){
-                JSONObject msg_sensor = sensorDataModel.toJSON();
                 if(REAL_TIME_OPERATION)
-                    buffer.insertJson(msg_sensor.toString());
-                sensorDataView.update(msg_sensor);
+                    buffer.insertJson(inertialModel.toJSON().toString());
                 updAcc = updGyr = updMag = false;
             }
         }
     };
-
 
     @Override
     protected void onDestroy(){
@@ -551,10 +495,8 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     public void SchedulerOfflineDetect() {
         schedulerOffline = scheduler.scheduleAtFixedRate(() -> {
-            Log.d("TAG", "START MONITORING: " + START_MONITORING);
             if (START_MONITORING) {
-                REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(locationModel.getLatitude(), locationModel.getLongitude(),
-                        LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
+                REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(FINAL_TIME_WORK, INITIAL_TIME_WORK);
                 Log.d("TAG", "Real Time: " + REAL_TIME_OPERATION);
                 if (!REAL_TIME_OPERATION) {
                     try {
@@ -563,12 +505,9 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                         enableHotspot(false);
                         Future<Boolean> sendDataFuture = ScheduleOffLine.sendDataOfflineById(buffer);
                         while (!sendDataFuture.isDone() && !REAL_TIME_OPERATION) {
-                            REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(locationModel.getLatitude(), locationModel.getLongitude(),
-                                    LATITUDE_FINAL, LONGITUDE_FINAL, FINAL_TIME_WORK, INITIAL_TIME_WORK);
-                            Log.d("TAG", "=========== DENTRO WHILE ========");
+                            REAL_TIME_OPERATION = ScheduleOffLine.isOverWorkDay(FINAL_TIME_WORK, INITIAL_TIME_WORK);
                             Thread.sleep(60000);
                         }
-                        Log.d("TAG", "=========== OUT WHILE ========");
                         enableHotspot(true);
                         REAL_TIME_OPERATION = true;
                     } catch (InterruptedException e) {
@@ -576,7 +515,7 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
                     }
                 }
                 else{
-                    ScheduleOffLine.isDeviceConnected(IP_ADDRESS_RELE);
+                    ScheduleOffLine.isDeviceConnected(IP_DRIVER);
                 }
             }
         }, 0, 60, TimeUnit.SECONDS);
@@ -584,7 +523,6 @@ public class MainActivity extends AppCompatActivity implements ServiceCallbacks 
 
     @Override
     public JSONObject getCurrentDataMqtt() {
-        //Log.d("TAG", "MQTT Service ON");
         return concatJSON();
     }
 

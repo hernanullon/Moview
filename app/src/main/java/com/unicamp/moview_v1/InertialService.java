@@ -22,7 +22,7 @@ import android.widget.Spinner;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-public class SensorsService extends Service implements SensorEventListener {
+public class InertialService extends Service implements SensorEventListener {
     public static final String CHANNEL_ID = "SensorsServiceChannel";
     private static final String INERTIAL_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_INERTIAL_SENSORS";
     private static final String INERTIAL_KEY_VALUES = "update_inertial_sensors", INERTIAL_KEY_TYPE = "type_inertial_sensors";
@@ -42,8 +42,8 @@ public class SensorsService extends Service implements SensorEventListener {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Inertial Sensors Service")
-                .setContentText("El servicio de Inertial Sensors está activo.")
+                .setContentTitle("Inertial Service")
+                .setContentText("Active")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .build();

@@ -5,14 +5,15 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
-public class CellphoneDataView {
+public class CellphoneView {
     private TextView cellphoneTextView;
 
-    public CellphoneDataView(Activity activity) {
+    public CellphoneView(Activity activity) {
         cellphoneTextView = activity.findViewById(R.id.cellphone_text_view);
     }
 
-    public void update(JSONObject json) {
-        cellphoneTextView.setText("MSG: " + json.toString());
+    public void update(String msg) {
+        cellphoneTextView.setText(msg);
     }
+
 }

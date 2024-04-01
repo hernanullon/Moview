@@ -3,19 +3,19 @@ package com.unicamp.moview_v1;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class CellphoneDataModel {
+public class CellphoneModel {
     private int battery;
     private int temperature;
     private int wifi_status;
     private int signalStrength;
     private String network_type;
 
-    public CellphoneDataModel(int battery, int temperature, int wifi_status, int signalStrength, String network_type) {
-        this.battery = battery;
-        this.temperature = temperature;
-        this.wifi_status = wifi_status;
-        this.signalStrength = signalStrength;
-        this.network_type = network_type;
+    public CellphoneModel() {
+        this.battery = -999;
+        this.temperature = -999;
+        this.wifi_status = 0;
+        this.signalStrength = -999;
+        this.network_type = "None";
     }
 
     public JSONObject toJSON() {
@@ -33,6 +33,15 @@ public class CellphoneDataModel {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    public String toString() {
+        return  "battery=" + battery +
+                ", temperature=" + temperature +
+                ", wifi_status=" + wifi_status +
+                ", signalStrength=" + signalStrength +
+                ", network_type='" + network_type;
     }
 
     public int getSignalStrength() {

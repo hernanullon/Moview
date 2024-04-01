@@ -7,12 +7,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.unicamp.moview_v1.ConfigureParametersActivity;
-import com.unicamp.moview_v1.MainActivity;
 import com.unicamp.moview_v1.R;
 
 public class EnergyTempActivity extends AppCompatActivity {

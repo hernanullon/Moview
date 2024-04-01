@@ -42,8 +42,8 @@ public class LocationService extends Service implements LocationListener {
         PendingIntent pendingIntent = PendingIntent.getActivity(this,0, notificationIntent, 0);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("GPS Tracking Service")
-                .setContentText("El servicio de seguimiento GPS está activo.")
+                .setContentTitle("Location Service")
+                .setContentText("Active")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .build();

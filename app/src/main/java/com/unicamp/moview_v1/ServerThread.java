@@ -28,7 +28,7 @@ public class ServerThread extends Thread {
                 Socket socket = serverSocket.accept();
                 InetAddress inetAddress = socket.getInetAddress();
                 //Log.d("TAG", "Nuevo dispositivo conectado " + inetAddress.toString());
-                if(!inetAddress.toString().equals(MainActivity.IP_ADDRESS_RELE)) {
+                if(!inetAddress.toString().equals(MainActivity.IP_DRIVER)) {
                     NetworkThread networkThread = new NetworkThread(socket, port, context);
                     networkThread.start();
                 }

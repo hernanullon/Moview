@@ -5,14 +5,14 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
-public class SensorDataView {
+public class InertialView {
     private TextView inertialTextView;
 
-    public SensorDataView(Activity activity) {
+    public InertialView(Activity activity) {
         inertialTextView = activity.findViewById(R.id.inertial_text_view);
     }
 
-    public void update(JSONObject json) {
-        inertialTextView.setText("MSG: " + json.toString());
+    public void update(String msg) {
+        inertialTextView.setText(msg);
     }
 }

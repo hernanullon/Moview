@@ -12,7 +12,7 @@ public class LocationView {
         gpsTextView = activity.findViewById(R.id.gps_text_view);
     }
 
-    public void update(JSONObject json) {
-        gpsTextView.setText("MSG: " + json.toString());
+    public void update(String msg) {
+        gpsTextView.setText(msg);
     }
 }

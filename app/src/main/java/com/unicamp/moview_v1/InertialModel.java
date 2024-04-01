@@ -4,12 +4,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class SensorDataModel {
+import java.util.Arrays;
+
+public class InertialModel {
     private float[] accelerometerValues;
     private float[] gyroscopeValues;
     private float[] magnetometerValues;
 
-    public SensorDataModel() {
+    public InertialModel() {
         this.accelerometerValues = new float[3];
         this.gyroscopeValues = new float[3];
         this.magnetometerValues = new float[3];
@@ -37,6 +39,13 @@ public class SensorDataModel {
 
     public void setMagnetometerValues(float[] magnetometerValues) {
         this.magnetometerValues = magnetometerValues;
+    }
+
+    @Override
+    public String toString() {
+        return  "accelerometerValues=" + Arrays.toString(accelerometerValues) +
+                ", gyroscopeValues=" + Arrays.toString(gyroscopeValues) +
+                ", magnetometerValues=" + Arrays.toString(magnetometerValues);
     }
 
     public JSONObject toJSON() {

@@ -7,22 +7,31 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
@@ -33,13 +42,16 @@ public class MqttService extends Service {
     private static MqttAsyncClient client;
     private ScheduledExecutorService scheduler;
     private ServiceCallbacks serviceCallbacks;
+    private Handler handler;
 
     private static final String SERVER_URI = "tcp://143.106.11.105:1883";
-    //private static final String SERVER_URI = "tcp://broker.hivemq.com:1883";
-    private static final String CLIENT_ID = "SamsungGalaxyA5";
-    private static final String TOPIC = "unicamp/electric/onibus";
-    private static final String PASSWORD_SERVER = "ql!FIzt2W0B08";
-
+    private static final int REAL_TIME_RATE = 1;
+    private static final String TOPIC = "unicamp/onibus/";
+    private static final String CONFIGURATIONS_TOPIC = "unicamp/onibus/configurations/";
+    private static final String USER_SERVER = "cellphone1";
+    private static final String PASSWORD_SERVER = "W35UjSTV}!xeAe.";
+    //cellphone1  -  W35UjSTV}!xeAe.
+    //cellphone2  -  W35UjSTV}!xeAe.
     public static final String CHANNEL_ID = "MqttForegroundServiceChannel";
 
     @Override
@@ -57,71 +69,13 @@ public class MqttService extends Service {
         serviceCallbacks = callbacks;
     }
 
-    public void connectServer() {
-        try {
-            client = new MqttAsyncClient(SERVER_URI, CLIENT_ID, null);
-            Executors.newSingleThreadExecutor().execute(() -> {
-                Timer timer = new Timer();
-                timer.scheduleAtFixedRate(new TimerTask() {
-                    @Override
-                    public void run() {
-                        Log.d("TAG", "-- Ciclo MQTT --");
-                        try {
-                            if (!client.isConnected()) {
-                                IMqttToken token = client.connect();
-                                token.waitForCompletion();
-                            } else {
-                                Log.d("TAG", "-- Conectado --");
-                                startSendingJson();
-                                timer.cancel(); // Detener el temporizador una vez que se haya establecido la conexión
-                            }
-                        } catch (MqttException e) {
-                            Log.d("TAG", "No conectado 1... Intentando reconectar en 2 segundos");
-                        }
-                    }
-                }, 0, 2000); // Intentar reconexión cada 2 segundos (ajusta el valor según tus necesidades)
-            });
-        } catch (MqttException e) {
-            e.printStackTrace();
-            Log.d("TAG", "No conectado 2...");
-        }
-    }
-
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        handler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
-
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Mqtt Service")
-                .setContentText("El servicio de Mqtt está activo.")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentIntent(pendingIntent)
-                .build();
-
-        startForeground(4, notification);
-        //client = new MqttAsyncClient(SERVER_URI, CLIENT_ID, null);
+        startForegroundService();
         connectServer();
-        Log.d("TAG", "Start send data");
-
         return START_NOT_STICKY;
-    }
-
-    public void startSendingJson() {
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                //Log.d("TAG", "Scheduler MQTT 1s");
-                if (serviceCallbacks != null && MainActivity.REAL_TIME_OPERATION) {
-                    JSONObject msg = serviceCallbacks.getCurrentDataMqtt();
-                    sendMessageMQTT(msg);
-                }
-            }
-        }, 0, 1, TimeUnit.SECONDS);
     }
 
     private void createNotificationChannel() {
@@ -136,44 +90,168 @@ public class MqttService extends Service {
         }
     }
 
-    public static void sendMessageMQTT(JSONObject msg) {
-        try {
-            int qos = 2;
-            MqttMessage message = new MqttMessage();
-            message.setPayload(msg.toString().getBytes());
-            message.setQos(qos);
-            client.publish(TOPIC, message);
-            Log.d("TAG", "Public: " + msg);
-        } catch (MqttException e) {
-            Log.d("TAG", "Reconectando...");
-            Executors.newSingleThreadExecutor().execute(() -> {
-                try {
-                    Thread.sleep(2000);
-                    IMqttToken token = client.connect();
-                    token.waitForCompletion();
-                    Log.d("TAG", "Reconectado...");
-                } catch (MqttException | InterruptedException ex) {
-                    Log.d("TAG", "Reconexión fallida...");
+    private void startForegroundService() {
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Mqtt Service")
+                .setContentText("Active")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(pendingIntent)
+                .build();
+        startForeground(4, notification);
+    }
+
+    private void connectServer() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                if (client == null) {
+                    client = new MqttAsyncClient(SERVER_URI, MainActivity.DEVICE_ID, null);
                 }
+                MqttConnectOptions options = new MqttConnectOptions();
+                options.setAutomaticReconnect(true);
+                options.setCleanSession(true);
+                options.setUserName(USER_SERVER);
+                options.setPassword(PASSWORD_SERVER.toCharArray());
+                //options.setKeepAliveInterval(10);
+                //options.setConnectionTimeout(10);
+                //options.setMaxInflight(100);
+                client.connect(options, null, new IMqttActionListener() {
+                    @Override
+                    public void onSuccess(IMqttToken asyncActionToken) {
+                        subscribeToConfigurations();
+                        renewSubscription();
+                        startSendingJson();
+                    }
+                    @Override
+                    public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                        Log.e("TAG", "Error al conectar con el broker MQTT", exception);
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectServer();
+                            }
+                        }, 15000);
+                    }
+                });
+            } catch (MqttException e) {
+                Log.e("TAG", "Error al conectar con el broker MQTT", e);
+            }
+        });
+    }
+
+    private void subscribeToConfigurations() {
+        try {
+            String topicFilter = CONFIGURATIONS_TOPIC+MainActivity.DEVICE_ID;
+            Log.d("TAG", "Configuration topic: " + topicFilter);
+            client.subscribe(topicFilter, 2, (topic, message) -> {
+                String receivedConfig = new String(message.getPayload());
+                processReceivedConfigurations(receivedConfig);
             });
+        } catch (MqttException e) {
+            Log.e("TAG", "Error al suscribirse a configuraciones", e);
         }
     }
 
+    private void processReceivedConfigurations(String receivedConfig) {
+        Log.d("TAG", "Configuration received: " + receivedConfig);
+        sendAcknowledgement(MainActivity.DEVICE_ID);
+        try {
+            JSONObject configJson  = new JSONObject(receivedConfig);
+            SharedPreferences.Editor editor = MainActivity.sharedPreferences.edit();
+            Iterator<String> keys = configJson.keys();
+            Map<String, ?> allEntries = MainActivity.sharedPreferences.getAll();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                if (!allEntries.containsKey(key)) {
+                    continue;
+                }
+                Object value = configJson.get(key);
+                if (value instanceof Integer) {
+                    editor.putInt(key, (Integer) value);
+                } else if (value instanceof String) {
+                    editor.putString(key, (String) value);
+                }
+            }
+            editor.commit();
+            restartMainActivity();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void restartMainActivity() {
+        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        Runtime.getRuntime().exit(0);
+    }
+
+    private void renewSubscription() {
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
+            if (client != null && client.isConnected()) {
+                subscribeToConfigurations();
+                Log.d("TAG", "Renewed subscription to the configuration topic.");
+            }
+        }, 1, 15, TimeUnit.MINUTES);
+    }
+
+
+    private void sendAcknowledgement(String deviceId) {
+        String ackTopic = "unicamp/onibus/configurations/ack/" + deviceId;
+        String ackMessage = "{ \"ack\": true, \"device_id\": \"" + deviceId + "\" }";
+        try {
+            if (client != null && client.isConnected()) {
+                MqttMessage message = new MqttMessage(ackMessage.getBytes());
+                message.setQos(2);
+                client.publish(ackTopic, message);
+            }
+        } catch (MqttException e) {
+            Log.e("TAG", "Error al enviar el acuse de recibo", e);
+        }
+    }
+
+    private void startSendingJson() {
+        if (scheduler == null || scheduler.isShutdown()) {
+            scheduler = Executors.newSingleThreadScheduledExecutor();
+            scheduler.scheduleAtFixedRate(() -> {
+                if (serviceCallbacks != null && MainActivity.REAL_TIME_OPERATION) {
+                    JSONObject msg = serviceCallbacks.getCurrentDataMqtt();
+                    sendMessageMQTT(msg);
+                }
+            }, 0, REAL_TIME_RATE, TimeUnit.SECONDS);
+        }
+    }
+
+    public static void sendMessageMQTT(JSONObject msg) {
+        try {
+            if (client.isConnected()) {
+                MqttMessage message = new MqttMessage(msg.toString().getBytes());
+                message.setQos(0);
+                client.publish(TOPIC + msg.getString("type"), message);
+                Log.d("TAG", "Mensaje publicado: " + msg);
+            } else {
+                Log.e("TAG", "Cliente MQTT no conectado. Mensaje no enviado.");
+            }
+        } catch (MqttException | JSONException e) {
+            Log.e("TAG", "Error al publicar mensaje MQTT", e);
+        }
+    }
+
+
     @Override
     public void onDestroy() {
-        Log.d("TAG", "Scheduler destroy ====");
-        if (scheduler != null) {
-            scheduler.shutdown();
-            scheduler = null;
+        super.onDestroy();
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.shutdownNow();
         }
-        if (client != null) {
+        if (client != null && client.isConnected()) {
             try {
                 client.disconnect();
             } catch (MqttException e) {
-                e.printStackTrace();
+                Log.e("TAG", "Error al desconectar el cliente MQTT", e);
             }
         }
-        super.onDestroy();
     }
 
 }

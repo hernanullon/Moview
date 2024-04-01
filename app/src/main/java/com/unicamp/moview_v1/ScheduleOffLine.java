@@ -59,19 +59,15 @@ public class ScheduleOffLine {
         });
     }
 
-    public static boolean isOverWorkDay(double lat1, double lon1, double lat2, double lon2, LocalTime finalTimeWork, LocalTime initialTimeWork){
+    //Error: A 400 Bad Request error occurred: {"error":"unable to parse 'inertial,device_id=MMS-001': missing fields"}
+    //{"topic":"unicamp/onibus/inertial","payload":{"timestamp_sys":1711733032008,"device_id":"MMS-001","type":"inertial","accX":1.290474772453308,"accY":2.786850690841675,"accZ":9.346963882446289,"gyrX":-0.04337143152952194,"gyrY":0.0555887371301651,"gyrZ":0.05803219974040985,"magX":-65.5199966430664,"magY":82.0199966430664,"magZ":57.959999084472656},"qos":0,"retain":false,"_msgid":"345f97a6bb19089e"}
+
+    public static boolean isOverWorkDay(LocalTime finalTimeWork, LocalTime initialTimeWork){
         ZonedDateTime time_now = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
-        Location loc1 = new Location("");
-        Location loc2 = new Location("");
-        loc1.setLatitude(lat1); loc2.setLatitude(lat2);
-        loc1.setLongitude(lon1); loc2.setLongitude(lon2);
-        float distance = loc1.distanceTo(loc2);
-        Log.d("TAG", "Distancia: " + String.valueOf(distance));
-        //if(distance <= 100) {
-        LocalTime hnow = time_now.toLocalTime().withNano(0);
-        LocalTime hfinal = finalTimeWork.withNano(0);
-        LocalTime hinitial = initialTimeWork.withNano(0);
-        Log.d("TAG", "H: " + hnow.toString() +" - "+ hfinal.toString()+" - " + hinitial.toString() );
+        LocalTime hnow = time_now.toLocalTime().withSecond(0).withNano(0);
+        LocalTime hfinal = finalTimeWork.withSecond(0).withNano(0);
+        LocalTime hinitial = initialTimeWork.withSecond(0).withNano(0);
+        Log.d("TAG", "H: " + hinitial.toString() + " - " + hnow.toString() + " - " + hfinal.toString()  );
         if (hnow.isAfter(hinitial) && hnow.isBefore(hfinal)){
             Log.d("TAG", "Real Time OFF" );
             return false;
@@ -109,7 +105,7 @@ public class ScheduleOffLine {
         DataOutputStream outputStream = null;
         try {
             Log.d("TAG", "Mensaje Preparado" + Arrays.toString(message));
-            clientSocket = new Socket(MainActivity.IP_ADDRESS_RELE, 8080);
+            clientSocket = new Socket(MainActivity.IP_DRIVER, 8080);
             outputStream = new DataOutputStream(clientSocket.getOutputStream());
             outputStream.write(message);
             outputStream.flush();
