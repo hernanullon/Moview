@@ -18,7 +18,7 @@ public class NetworkThread extends Thread {
     private final Socket socket;
     private final Context context;
     private final int port;
-    private static final String EXTERNAL_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_EXTERNAL_SENSORS";
+    private static final String EXTERNAL_SEND_MESSAGE = "com.unicamp.mms.SEND_EXTERNAL_SENSORS";
     private static final String EXTERNAL_KEY_VALUES = "update_external_sensors";
 
     public NetworkThread(Socket socket,int port, Context context) {

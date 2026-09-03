@@ -20,6 +20,9 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
+    <uses-permission android:name="android.permission.REBOOT"
+        tools:ignore="ProtectedPermissions" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
@@ -49,6 +52,20 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".MyAdminReceiver"
+            android:label="Administrador del dispositivo"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="false"
+            android:testOnly="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_receiver" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -68,11 +85,11 @@
             android:enabled="true"
             android:exported="true" />
 
-        <service android:name=".CellphoneService"
+        <service android:name=".DeviceService"
             android:enabled="true"
             android:exported="true"/>
 
-        <service android:name=".MqttService"
+        <service android:name=".AmqpService"
             android:enabled="true"
             android:exported="true"/>
 

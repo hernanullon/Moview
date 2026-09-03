@@ -3,31 +3,34 @@ package com.unicamp.moview_v1;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class CellphoneModel {
+public class DeviceModel {
     private int battery;
     private int temperature;
     private int wifi_status;
-    private int signalStrength;
+    private int rssi_device;
     private String network_type;
+    private boolean state;
 
-    public CellphoneModel() {
+    public DeviceModel() {
         this.battery = -999;
         this.temperature = -999;
         this.wifi_status = 0;
-        this.signalStrength = -999;
+        this.rssi_device = -999;
         this.network_type = "None";
+        this.state = false;
     }
 
     public JSONObject toJSON() {
         try {
             JSONObject json = new JSONObject();
+            json.put("timestamp_sys", System.currentTimeMillis());
             json.put("device_id", MainActivity.DEVICE_ID);
-            json.put("type", "cellphone");
-            json.put("battery", battery);
+            json.put("type", "device");
+            json.put("soc", battery);
             json.put("temperature", temperature);
-            json.put("wifi_status", wifi_status);
-            json.put("signal", signalStrength);
-            json.put("network", network_type);
+            json.put("wifistatus", wifi_status);
+            json.put("txpower", rssi_device);
+            json.put("networktype", network_type);
             return json;
         } catch (JSONException e){
             e.printStackTrace();
@@ -39,17 +42,25 @@ public class CellphoneModel {
     public String toString() {
         return  "battery=" + battery +
                 ", temperature=" + temperature +
-                ", wifi_status=" + wifi_status +
-                ", signalStrength=" + signalStrength +
-                ", network_type='" + network_type;
+                ", wifistatus=" + wifi_status +
+                ", txpower=" + rssi_device +
+                ", networktype=" + network_type;
     }
 
-    public int getSignalStrength() {
-        return signalStrength;
+    public boolean isState() {
+        return state;
     }
 
-    public void setSignalStrength(int signalStrength) {
-        this.signalStrength = signalStrength;
+    public void setState(boolean state) {
+        this.state = state;
+    }
+
+    public int getRssi_device() {
+        return rssi_device;
+    }
+
+    public void setRssi_device(int rssi_device) {
+        this.rssi_device = rssi_device;
     }
 
     public String getNetwork_type() {

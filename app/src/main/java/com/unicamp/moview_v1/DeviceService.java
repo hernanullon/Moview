@@ -42,13 +42,14 @@ import org.json.JSONObject;
 import java.lang.reflect.Method;
 import java.util.List;
 
-public class CellphoneService extends Service {
+public class DeviceService extends Service {
     public static final String CHANNEL_ID = "CellphoneServiceChannel";
-    private static final String CELLPHONE_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_CELLPHONE_SENSORS";
+    private static final String CELLPHONE_SEND_MESSAGE = "com.unicamp.mms.SEND_CELLPHONE_SENSORS";
     private static final String CELLPHONE_KEY_BATTERY = "battery_cellphone", CELLPHONE_KEY_TEMPERATURE = "temperature_cellphone";
     private static final String CELLPHONE_KEY_SIGNAL = "signal_cellphone", CELLPHONE_KEY_NETWORK = "network_cellphone", CELLPHONE_KEY_HOTSPOT = "hotspot_cellphone";
     private BroadcastReceiver CellphoneReceiver;
     private TelephonyManager telephonyManager;
+    private boolean receiverRegistered = false;
 
     @Override
     public void onCreate() {
@@ -133,7 +134,12 @@ public class CellphoneService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(CellphoneReceiver);
+        if (receiverRegistered) {
+            try {
+                unregisterReceiver(CellphoneReceiver);
+                receiverRegistered = false;
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override
@@ -142,7 +148,8 @@ public class CellphoneService extends Service {
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, piFlags);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Cellphone Service")
@@ -152,8 +159,11 @@ public class CellphoneService extends Service {
                 .build();
 
         startForeground(3, notification);
-        registerReceiver(CellphoneReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        return START_NOT_STICKY;
+        if (!receiverRegistered) {
+            registerReceiver(CellphoneReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            receiverRegistered = true;
+        }
+        return START_STICKY;
     }
 
     private void createNotificationChannel() {
@@ -173,4 +183,5 @@ public class CellphoneService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
 }

@@ -3,6 +3,11 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/rullon/AndroidStudioProjects/Mobile Multi-Sensor System - AMQP/app/src/main/res/layout/activity_main.xml" value="0.225" />
+        <entry key="..\:/Users/rullon/AndroidStudioProjects/Mobile Multi-Sensor System - AMQP/app/src/main/res/xml/device_admin_receiver.xml" value="0.36666666666666664" />
+        <entry key="..\:/Users/rullon/AndroidStudioProjects/Mobile Multi-Sensor System/app/src/main/res/layout/activity_main.xml" value="0.36666666666666664" />
+        <entry key="..\:/Users/rullon/AndroidStudioProjects/Mobile Multi-Sensor System/app/src/main/res/layout/cellphone_configurations.xml" value="0.21145833333333333" />
+        <entry key="..\:/Users/rullon/AndroidStudioProjects/Mobile Multi-Sensor System/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.196" />
         <entry key="..\:/Users/rullon/AndroidStudioProjects/Moview_v1/app/src/main/res/layout/activity_main.xml" value="0.33" />
         <entry key="..\:/Users/rullon/AndroidStudioProjects/Moview_v1/app/src/main/res/layout/cellphone_configurations.xml" value="0.33" />
         <entry key="..\:/Users/rullon/AndroidStudioProjects/Moview_v1/app/src/main/res/layout/rate_collection.xml" value="0.33" />

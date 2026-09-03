@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcelable;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,7 +26,7 @@ import androidx.core.content.ContextCompat;
 
 public class LocationService extends Service implements LocationListener {
     public static final String CHANNEL_ID = "GPSServiceChannel";
-    private static final String ACTION_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_LOCATION";
+    private static final String ACTION_SEND_MESSAGE = "com.unicamp.mms.SEND_LOCATION";
     private static final String MESSAGE_KEY = "update_location";
     private LocationManager locationManager;
     private SharedPreferences sharedPreferences;
@@ -39,7 +40,8 @@ public class LocationService extends Service implements LocationListener {
 
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,0, notificationIntent, 0);
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,0, notificationIntent, piFlags);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Location Service")
@@ -50,7 +52,7 @@ public class LocationService extends Service implements LocationListener {
 
         startForeground(1, notification);
         startLocationUpdates();
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     private void createNotificationChannel() {
@@ -72,7 +74,7 @@ public class LocationService extends Service implements LocationListener {
 
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_RATE_UPDATE, 0, this);
         } else {
-            // Manejar el caso en el que no se conceda el permiso
+            Log.e("ERROR", "Permissions location not granted. The app will not function properly");
         }
     }
 
@@ -87,7 +89,6 @@ public class LocationService extends Service implements LocationListener {
         sendBroadcast(locationIntent);
     }
 
-
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
@@ -98,6 +99,12 @@ public class LocationService extends Service implements LocationListener {
 
     @Override
     public void onProviderDisabled(@NonNull String provider) {
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stopLocationUpdates();
     }
 
     @Nullable

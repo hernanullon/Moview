@@ -17,6 +17,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Parcelable;
+import android.util.Log;
 import android.widget.Spinner;
 
 import androidx.annotation.Nullable;
@@ -24,7 +25,7 @@ import androidx.core.app.NotificationCompat;
 
 public class InertialService extends Service implements SensorEventListener {
     public static final String CHANNEL_ID = "SensorsServiceChannel";
-    private static final String INERTIAL_SEND_MESSAGE = "com.unicamp.moview_v1.SEND_INERTIAL_SENSORS";
+    private static final String INERTIAL_SEND_MESSAGE = "com.unicamp.mms.SEND_INERTIAL_SENSORS";
     private static final String INERTIAL_KEY_VALUES = "update_inertial_sensors", INERTIAL_KEY_TYPE = "type_inertial_sensors";
     private SensorManager sensorManager;
     private SharedPreferences sharedPreferences;
@@ -39,7 +40,8 @@ public class InertialService extends Service implements SensorEventListener {
         INERTIAL_RATE_UPDATE = inertial_rate_select(sharedPreferences.getInt("InertialRate",2));
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, piFlags);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Inertial Service")
@@ -50,7 +52,7 @@ public class InertialService extends Service implements SensorEventListener {
 
         startForeground(2, notification);
         start();
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     public int inertial_rate_select(int pos){
@@ -78,9 +80,26 @@ public class InertialService extends Service implements SensorEventListener {
     }
 
     public void start() {
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),INERTIAL_RATE_UPDATE);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), INERTIAL_RATE_UPDATE);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), INERTIAL_RATE_UPDATE);
+        Sensor acc = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        Sensor gyr = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        Sensor mag = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
+        logSensorCapabilities(acc, gyr, mag);
+
+        // maxReportLatencyUs = 0 → sin batching, entrega inmediata
+        sensorManager.registerListener(this, acc, 200_000);
+        sensorManager.registerListener(this, gyr, 200_000);
+        sensorManager.registerListener(this, mag, 200_000);
+
+    }
+
+    private void logSensorCapabilities(Sensor acc, Sensor gyr, Sensor mag) {
+        if (acc != null) Log.d("SENSOR", "ACC minDelay=" + acc.getMinDelay()
+                + "µs maxDelay=" + acc.getMaxDelay() + "µs");
+        if (gyr != null) Log.d("SENSOR", "GYR minDelay=" + gyr.getMinDelay()
+                + "µs maxDelay=" + gyr.getMaxDelay() + "µs");
+        if (mag != null) Log.d("SENSOR", "MAG minDelay=" + mag.getMinDelay()
+                + "µs maxDelay=" + mag.getMaxDelay() + "µs");
     }
 
     public void stop() {
@@ -110,5 +129,6 @@ public class InertialService extends Service implements SensorEventListener {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stop();
     }
 }

@@ -5,10 +5,10 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
-public class CellphoneView {
+public class DeviceView {
     private TextView cellphoneTextView;
 
-    public CellphoneView(Activity activity) {
+    public DeviceView(Activity activity) {
         cellphoneTextView = activity.findViewById(R.id.cellphone_text_view);
     }
 

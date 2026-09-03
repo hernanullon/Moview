@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Define las políticas que el administrador del dispositivo puede controlar -->
+    <uses-policies>
+        <!-- Permite bloquear el dispositivo (lock screen) -->
+        <force-lock />
+
+        <!-- Permite cambiar la contraseña del dispositivo -->
+        <reset-password />
+
+        <!-- Permite deshabilitar la cámara del dispositivo -->
+        <disable-camera />
+
+        <!-- Permite definir reglas de expiración de la contraseña -->
+        <expire-password />
+
+        <!-- Permite definir la longitud mínima de la contraseña -->
+        <limit-password />
+
+        <!-- Permite definir reglas de complejidad para la contraseña -->
+        <watch-login />
+    </uses-policies>
+
+</device-admin>
